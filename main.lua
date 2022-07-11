@@ -4,6 +4,11 @@
 
 #include "script/infantry/humanoid.lua"
 
+--[[
+	keys:
+	level.rts.navigation_pos.identifier.i
+]]
+
 function init()
 
 	INFANTRY = 1
@@ -27,6 +32,9 @@ end
 function tick(dt)
 	if InputPressed("usetool") then
 		makeSoldier(ALLY_TEAM, GetPlayerCameraTransform())
+	end
+	if InputPressed("grab") then
+		setNavigationPosInRegistry(GetPlayerCameraTransform().pos, 1)
 	end
 end
 
@@ -158,6 +166,13 @@ function makeSoldier(team, t, typeSoldier)
 		allies[#allies + 1] = soldier
 	else
 		enemies[#enemies + 1] = soldier
+	end
+end
+
+function setNavigationPosInRegistry(pos, identifier)
+	DebugWatch("p", pos)
+	for i=1, 3 do
+		SetFloat("level.rts.navigation_pos." .. identifier .. "." .. i)
 	end
 end
 

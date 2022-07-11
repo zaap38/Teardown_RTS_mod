@@ -278,7 +278,14 @@ hover.timeSinceContact = 0.0
 
 function getNavigationPosFromRegistry()
 	local pos = Vec()
-	GetString()
+	for i=1, 3 do
+		pos[i] = GetFloat("level.rts.navigation_pos." .. identifier .. "." .. i)
+		DebugPrint(pos[i])
+	end
+	if VecLength(pos) > 0 then
+		DebugPrint("hey")
+	end
+	return pos
 end
 
 function hoverInit()
@@ -1661,7 +1668,8 @@ function update(dt)
 			humanoid.speed = 0
 			navigationClear()
 		else
-			navigationSetTarget(head.lastSeenPos, 1.0 + clamp(head.timeSinceLastSeen, 0.0, 4.0))
+			--navigationSetTarget(head.lastSeenPos, 1.0 + clamp(head.timeSinceLastSeen, 0.0, 4.0))
+			navigationSetTarget(getNavigationPosFromRegistry(), state.timeout)
 			humanoid.speedScale = config.huntSpeedScale
 			navigationUpdate(dt)
 			if head.canSeePlayer then
@@ -1729,7 +1737,8 @@ function update(dt)
 		
 		local distantPatrolIndex = getDistantPatrolIndex(GetPlayerTransform().pos)
 		local avoidTarget = GetLocationTransform(patrolLocations[distantPatrolIndex]).pos
-		navigationSetTarget(avoidTarget, 1.0)
+		--navigationSetTarget(avoidTarget, 1.0)
+		navigationSetTarget(getNavigationPosFromRegistry(), 1.0)
 		humanoid.speedScale = config.huntSpeedScale
 		navigationUpdate(dt)
 		if head.canSeePlayer then
@@ -1775,6 +1784,7 @@ function update(dt)
 			if not state.timeout then state.timeout = 30 end
 			navigationClear()
 			--navigationSetTarget(state.pos, state.timeout)
+			navigationSetTarget(getNavigationPosFromRegistry(), state.timeout)
 			state.initialized = true
 		else
 			head.dir = VecCopy(humanoid.dir)
@@ -1847,7 +1857,7 @@ function tick(dt)
 	end
 
 	identifier = GetTagValue(humanoid.body, "identifier")
-	DebugPrint("id: " .. identifier .. " - " .. humanoid.body)
+	--DebugPrint("id: " .. identifier .. " - " .. humanoid.body)
 	
 	if HasTag(humanoid.body, "turnhostile") then
 		RemoveTag(humanoid.body, "turnhostile")
