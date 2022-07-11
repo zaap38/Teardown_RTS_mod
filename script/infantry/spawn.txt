@@ -1,0 +1,4 @@
+#The content of this file has been replaced when making a local copy
+#List spawnable instances here in this format (path is relative to the mod folder):
+#path/to/prefab.xml : Category/Name
+
