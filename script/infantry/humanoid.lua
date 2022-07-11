@@ -280,10 +280,6 @@ function getNavigationPosFromRegistry()
 	local pos = Vec()
 	for i=1, 3 do
 		pos[i] = GetFloat("level.rts.navigation_pos." .. identifier .. "." .. i)
-		DebugPrint(pos[i])
-	end
-	if VecLength(pos) > 0 then
-		DebugPrint("hey")
 	end
 	return pos
 end
@@ -1538,6 +1534,8 @@ function update(dt)
 	humanoid.speed = 0
 	local state = stackTop()
 	
+	DebugPrint(identifier .. ": " .. state.id)
+	state.id = "hunt"
 	if state.id == "none" then
 		if config.patrol then
 			stackPush("patrol")
@@ -1655,6 +1653,7 @@ function update(dt)
 	end
 
 	--Hunt player
+	DebugWatch(identifier, getNavigationPosFromRegistry())
 	if state.id == "hunt" then
 		if not state.init then
 			navigationClear()
@@ -1737,8 +1736,8 @@ function update(dt)
 		
 		local distantPatrolIndex = getDistantPatrolIndex(GetPlayerTransform().pos)
 		local avoidTarget = GetLocationTransform(patrolLocations[distantPatrolIndex]).pos
-		--navigationSetTarget(avoidTarget, 1.0)
-		navigationSetTarget(getNavigationPosFromRegistry(), 1.0)
+		navigationSetTarget(avoidTarget, 1.0)
+		--navigationSetTarget(getNavigationPosFromRegistry(), 1.0)
 		humanoid.speedScale = config.huntSpeedScale
 		navigationUpdate(dt)
 		if head.canSeePlayer then

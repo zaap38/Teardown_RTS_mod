@@ -34,7 +34,9 @@ function tick(dt)
 		makeSoldier(ALLY_TEAM, GetPlayerCameraTransform())
 	end
 	if InputPressed("grab") then
-		setNavigationPosInRegistry(GetPlayerCameraTransform().pos, 1)
+		for i=1, #allies + #enemies do
+			setNavigationPosInRegistry(GetPlayerCameraTransform().pos, i)
+		end
 	end
 end
 
@@ -170,9 +172,8 @@ function makeSoldier(team, t, typeSoldier)
 end
 
 function setNavigationPosInRegistry(pos, identifier)
-	DebugWatch("p", pos)
 	for i=1, 3 do
-		SetFloat("level.rts.navigation_pos." .. identifier .. "." .. i)
+		SetFloat("level.rts.navigation_pos." .. identifier .. "." .. i, pos[i])
 	end
 end
 
