@@ -118,10 +118,23 @@ function rnd(mi, ma)
 	return mi + (ma-mi)*v
 end
 
+function drawTeamOutline(bodies)
+	for i=1, #bodies do
+		local r = 1
+		local g = 0
+		if GetTagValue(bodies[i], "team") == "1" then
+			r = 0
+			g = 1
+		end
+		DrawBodyOutline(bodies[i], r, g, 0, 1)
+	end
+end
+
 function rejectAllBodies(bodies)
 	for i=1, #bodies do
 		QueryRejectBody(bodies[i])
 	end
+	ignoreTargetBodies()
 end
 
 -----------------------------------------------------------------------
@@ -223,7 +236,7 @@ end
 function humanoidUpdate()
 	humanoidSetAxes()
 
-	humanoid.playerPos = GetPlayerCameraTransform().pos
+	humanoid.playerPos = getTargetTransform().pos --GetPlayerCameraTransform().pos
 
 	local vel = GetBodyVelocity(humanoid.body)
 	local fwdSpeed = VecDot(vel, humanoid.dir)
@@ -251,10 +264,10 @@ function humanoidUpdate()
 	humanoid.massCenter = TransformToParentPoint(humanoid.transform, VecScale(humanoid.massCenter, 1 / humanoid.mass))
 	
 	--Distance and direction to player
-	local pp = VecAdd(GetPlayerTransform().pos, Vec(0, 1, 0))
+	local pp = VecAdd(getTargetTransform().pos, Vec(0, 1, 0)) --GetPlayerTransform
 	local d = VecSub(pp, humanoid.bodyCenter)
 	humanoid.distToPlayer = VecLength(d)
-	humanoid.dirToPlayer = VecScale(d, 1.0/humanoid.distToPlayer)
+	humanoid.dirToPlayer = VecScale(d, 1.0 / humanoid.distToPlayer)
 	
 	--Sense player if player is close and there is nothing in between
 	humanoid.canSensePlayer = false
@@ -282,6 +295,46 @@ function getNavigationPosFromRegistry()
 		pos[i] = GetFloat("level.rts.navigation_pos." .. identifier .. "." .. i)
 	end
 	return pos
+end
+
+function getTargetId()
+	return GetInt("level.rts.target." .. identifier)
+end
+
+function ignoreTargetBodies()
+	local target = getTargetId()
+	local allBodies = FindBodies("identifier", true)
+	local bodies = {}
+	for i=1, #allBodies do
+		if GetTagValue(allBodies[i], "identifier") == tostring(target) then
+			bodies[#bodies + 1] = allBodies[i]
+		end
+	end
+	for i=1, #bodies do
+		--DebugCross(GetBodyTransform(bodies[i]).pos, 0, 1, 0)
+		QueryRejectBody(bodies[i])
+	end
+end
+
+function setStatusInRegistry()
+	SetBool("level.rts.alive." .. identifier, not (humanoid.health <= 0))
+end
+
+function getTargetTransform()
+	local target = getTargetId()
+	--DebugPrint(handle)
+	local allBodies = FindBodies("identifier", true)
+	local bodies = {}
+	for i=1, #allBodies do
+		if GetTagValue(allBodies[i], "identifier") == tostring(target) then
+			bodies[#bodies + 1] = allBodies[i]
+		end
+	end
+	--DebugCross(GetBodyTransform(bodies[1]).pos, 0, 1, 0)
+	if VecLength(GetBodyTransform(bodies[1]).pos) == 0 then
+		return Transform(Vec(0, -100, 0))
+	end
+	return TransformCopy(GetBodyTransform(bodies[1]))
 end
 
 function hoverInit()
@@ -478,7 +531,7 @@ function headUpdate(dt)
 	else
 		head.seenTimer = math.max(0.0, head.seenTimer - dt / config.lostVisibilityTimer)
 	end
-	head.canSeePlayer = (head.seenTimer > 0.5)
+	head.canSeePlayer = (head.seenTimer > 0.5)-- or true
 	
 	if head.canSeePlayer then
 		head.lastSeenPos = pp
@@ -654,13 +707,15 @@ function weaponFire(weapon, pos, dir)
 	--Start one voxel ahead to not hit robot itself
 	pos = VecAdd(pos, VecScale(dir, 0.1))
 	
-	if weapon.type == "gun" then
-		PlaySound(shootSound, pos, 1.0, false)
-		PointLight(pos, 1, 0.8, 0.6, 1.5)
-		Shoot(pos, dir, 0, weapon.strength)
-	elseif weapon.type == "rocket" then
-		PlaySound(rocketSound, pos, 1.0, false)
-		Shoot(pos, dir, 1, weapon.strength)
+	if head.seenTimer > 0.5 then
+		if weapon.type == "gun" then
+			PlaySound(shootSound, pos, 1.0, false)
+			PointLight(pos, 1, 0.8, 0.6, 1.5)
+			Shoot(pos, dir, 0, weapon.strength)
+		elseif weapon.type == "rocket" then
+			PlaySound(rocketSound, pos, 1.0, false)
+			Shoot(pos, dir, 1, weapon.strength)
+		end
 	end
 end
 
@@ -709,7 +764,7 @@ function weaponEmitFire(weapon, t, amount)
 		end
 		
 		--Hurt player
-		local toPlayer = VecSub(GetPlayerCameraTransform().pos, t.pos)
+		--[[local toPlayer = VecSub(getTargetTransform().pos, t.pos) --GetPlayerCameraTransform()
 		local distToPlayer = VecLength(toPlayer)
 		local distScale = clamp(1.0 - distToPlayer / 6.0, 0.0, 1.0)
 		if distScale > 0 then
@@ -718,10 +773,10 @@ function weaponEmitFire(weapon, t, amount)
 				rejectAllBodies(humanoid.allBodies)
 				local hit = QueryRaycast(p, toPlayer, distToPlayer)
 				if not hit or distToPlayer < 0.5 then
-					SetPlayerHealth(GetPlayerHealth() - 0.02 * weapon.strength * amount * distScale)
+					--SetPlayerHealth(GetPlayerHealth() - 0.02 * weapon.strength * amount * distScale)
 				end
 			end	
-		end
+		end]]
 	end
 end
 
@@ -757,10 +812,10 @@ function weaponsUpdate(dt)
 			--Need to point towards player and have clear line of sight to have clear shot
 			local towardsPlayer = VecDot(fwd, toPlayer)
 			local gotAim = towardsPlayer > 0.9
-			if distToPlayer < 1.0 and towardsPlayer > 0.0 then
+			if (distToPlayer < 1.0 and towardsPlayer > 0.0) then
 				gotAim = true
 			end
-			if head.canSeePlayer and gotAim and humanoid.distToPlayer < weapon.maxDist then
+			if (head.canSeePlayer) and gotAim and humanoid.distToPlayer < weapon.maxDist then
 				QueryRequire("physical large")
 				rejectAllBodies(humanoid.allBodies)
 				local hit = QueryRaycast(t.pos, fwd, distToPlayer, 0, true)
@@ -770,6 +825,7 @@ function weaponsUpdate(dt)
 			end
 
 			--Handle states
+			--DebugWatch(identifier, weapon.state)
 			if weapon.state == "idle" then
 				weapon.idleTimer = weapon.idleTimer - dt
 				if weapon.idleTimer <= 0 and clearShot then
@@ -787,7 +843,7 @@ function weaponsUpdate(dt)
 					weapon.fireTimer = 0
 					weapon.fireCount = weapon.shotsPerRound
 				end
-			elseif weapon.state == "fire" then	
+			elseif weapon.state == "fire" then
 				weapon.fireTimer = weapon.fireTimer - dt
 				if towardsPlayer > 0.3 or distToPlayer < 1.0 then
 					if weapon.fireTimer <= 0 then
@@ -948,6 +1004,7 @@ function animatorUpdate(dt)
 
 	local state = stackTop()
 	if state.id == "hunt" then
+		humanoid.dir = VecCopy(humanoid.dirToPlayer)
 		idleFrame = 6
 		frame = frame + 5
 		nextFrame = nextFrame + 5
@@ -1108,20 +1165,26 @@ function navigationSetTarget(pos, timeout)
 end
 
 function navigationUpdate(dt)
+	DebugWatch(identifier, GetPathState())
 	if GetPathState() == "busy" then
 		navigation.timeSinceProgress = 0
 		navigation.thinkTime = navigation.thinkTime + dt
+		if navigation.timeout == nil then
+			navigation.timeout = 0
+		end
 		if navigation.thinkTime > navigation.timeout then
 			AbortPath()
 		end
 	end
 
 	if GetPathState() ~= "busy" then
+		--DebugWatch(identifier, GetPathState())
 		if GetPathState() == "done" or GetPathState() == "fail" then
 			if not navigation.resultRetrieved then
 				if GetPathLength() > 0.5 then
-					for l=0.2, GetPathLength(), 0.2 do
-						navigation.path[#navigation.path+1] = GetPathPoint(l)
+					local step = 0.5
+					for l=step, GetPathLength(), step do
+						navigation.path[#navigation.path + 1] = GetPathPoint(l)
 					end
 				end			
 				navigation.lastQueryTime = navigation.thinkTime
@@ -1443,8 +1506,10 @@ function update(dt)
 		end
 	end
 
+	setStatusInRegistry(identifier)
+
 	if humanoid.activateTrigger ~= 0 then 
-		if IsPointInTrigger(humanoid.activateTrigger, GetPlayerCameraTransform().pos) then
+		if IsPointInTrigger(humanoid.activateTrigger, getTargetTransform().pos) then --GetPlayerCameraTransform()
 			RemoveTag(humanoid.body, "inactive")
 			humanoid.activateTrigger = 0
 		end
@@ -1534,7 +1599,8 @@ function update(dt)
 	humanoid.speed = 0
 	local state = stackTop()
 	
-	DebugPrint(identifier .. ": " .. state.id)
+	--DebugPrint(identifier .. ": " .. state.id)
+	--DebugWatch("state.id " .. identifier, state.id)
 	state.id = "hunt"
 	if state.id == "none" then
 		if config.patrol then
@@ -1606,10 +1672,10 @@ function update(dt)
 		if not state.nextAction then
 			local pos = state.pos
 			humanoidTurnTowards(state.pos)
-			headTurnTowards(state.pos)
+			--headTurnTowards(state.pos)
 			local nav = stackPush("navigate")
 			nav.pos = state.pos
-			nav.timeout = 5.0
+			nav.timeout = 2.0--5.0
 			state.nextAction = "search"
 		elseif state.nextAction == "search" then
 			stackPush("search")
@@ -1653,7 +1719,7 @@ function update(dt)
 	end
 
 	--Hunt player
-	DebugWatch(identifier, getNavigationPosFromRegistry())
+	--DebugWatch(identifier, getNavigationPosFromRegistry())
 	if state.id == "hunt" then
 		if not state.init then
 			navigationClear()
@@ -1734,7 +1800,7 @@ function update(dt)
 			state.headAngleTimer = 0
 		end
 		
-		local distantPatrolIndex = getDistantPatrolIndex(GetPlayerTransform().pos)
+		local distantPatrolIndex = getDistantPatrolIndex(getTargetTransform().pos) --GetPlayerTransform
 		local avoidTarget = GetLocationTransform(patrolLocations[distantPatrolIndex]).pos
 		navigationSetTarget(avoidTarget, 1.0)
 		--navigationSetTarget(getNavigationPosFromRegistry(), 1.0)
@@ -1868,16 +1934,19 @@ function tick(dt)
 	end
 	
 	--Outline
-	local dist = VecDist(humanoid.bodyCenter, GetPlayerCameraTransform().pos)
+	local dist = VecDist(humanoid.bodyCenter, getTargetTransform().pos) --GetPlayerCameraTransform
+	drawTeamOutline(humanoid.allBodies)
+	--DebugWatch(identifier, navigation.target)
+	--DrawLine(humanoid.bodyCenter, navigation.target, 1, 0, 0, 0.7)
 	if dist < config.outline then
 		local a = clamp((config.outline - dist) / 5.0, 0.0, 1.0)
 		if canBeSeenByPlayer() then
 			a = 0
 		end
 		humanoid.outlineAlpha = humanoid.outlineAlpha + clamp(a - humanoid.outlineAlpha, -0.1, 0.1)
-		for i=1, #humanoid.allBodies do
-			DrawBodyOutline(humanoid.allBodies[i], 1, 1, 1, humanoid.outlineAlpha * 0.5)
-		end
+		--for i=1, #humanoid.allBodies do
+			--DrawBodyOutline(humanoid.allBodies[i], 1, 1, 1, humanoid.outlineAlpha * 0.5)
+		--end
 	end
 	
 	--Remove planks and wires after some time
@@ -1908,7 +1977,7 @@ function tick(dt)
 		end
 	end
 
-	-- debugState()
+	--debugState()
 end
 
 
