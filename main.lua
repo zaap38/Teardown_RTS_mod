@@ -2,7 +2,7 @@
 --Modding documentation: http://teardowngame.com/modding
 --API reference: http://teardowngame.com/modding/api.html
 
-#include "script/infantry/humanoid.lua"
+--#include "script/infantry/humanoid.lua"
 
 --[[
 	keys:
@@ -68,17 +68,6 @@ function tick(dt)
 		if InputPressed("v") then
 			makeSoldier(ENEMY_TEAM, GetPlayerCameraTransform())
 		end
-		if InputPressed("x") then
-			--[[for i=1, #soldiers do
-				if soldiers[i].team == ALLY_TEAM then
-					local pos = GetPlayerCameraTransform().pos
-					local offset = randVec(4)
-					offset[2] = 0
-					pos = VecAdd(pos, offset)
-					setNavigationPosInRegistry(pos, i)
-				end
-			end]]
-		end
 		if InputPressed("b") then
 			for i=1, #soldiers do
 				if soldiers[i].team == ENEMY_TEAM then
@@ -95,12 +84,18 @@ end
 
 
 function update(dt)
+	if isLoading then
+		return
+	end
 	updateTransformAllSoldiers()
 	setAllTarget()
 end
 
 
 function draw(dt)
+	if isLoading then
+		return
+	end
 	if tool.toggled then
 		UiMakeInteractive()
 		updateStrategicView(dt)
@@ -309,8 +304,15 @@ function initInfantry(team, t)
 		SetTag(entities[i], "team", tostring(soldier.team))
 	end
 	identifierCount = identifierCount + 1
-
 	return soldier
+end
+
+function setBodiesInRegistry(identifier)
+	local soldier = soldiers[identifier]
+	SetInt("level.rts.bodies." .. identifier .. ".count", #soldier.bodies)
+	for i=1, #soldier.bodies do
+		SetInt("level.rts.bodies." .. identifier .. "." .. i, soldier.bodies[i])
+	end
 end
 
 function getAliveStatusInRegistry(identifier)
@@ -328,6 +330,7 @@ function makeSoldier(team, t, typeSoldier)
 	setNavigationPosInRegistry(t.pos, soldier.id)
 
 	soldiers[#soldiers + 1] = soldier
+	setBodiesInRegistry(soldier.id)
 end
 
 function setNavigationPosInRegistry(pos, identifier)
@@ -338,6 +341,13 @@ end
 
 function setTargetIdInRegistry(identifierTarget, identifier)
 	SetInt("level.rts.target." .. identifier, identifierTarget)
+end
+
+function setTargetPosInRegistry(identifierTarget, identifier)
+	local pos = soldiers[identifierTarget].t.pos
+	for i=1, 3 do
+		SetFloat("level.rts.target_pos." .. identifier .. "." .. i, pos[i])
+	end
 end
 
 function getSoldierByIdentifier(identifier)
@@ -354,7 +364,7 @@ function updateTransformAllSoldiers()
 	end
 end
 
-function getClosestTarget(soldier)
+function getClosestTargetIdentifier(soldier)
 
 	local best = {
 		id = 0,
@@ -374,7 +384,11 @@ end
 
 function setAllTarget()
 	for i=1, #soldiers do
-		setTargetIdInRegistry(getClosestTarget(soldiers[i]), soldiers[i].id)
+		local target = getClosestTargetIdentifier(soldiers[i])
+		if target ~= 0 then
+			setTargetPosInRegistry(target, i)
+			setTargetIdInRegistry(target, i)
+		end
 	end
 end
 

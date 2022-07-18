@@ -303,17 +303,22 @@ end
 
 function ignoreTargetBodies()
 	local target = getTargetId()
-	local allBodies = FindBodies("identifier", true)
-	local bodies = {}
-	for i=1, #allBodies do
-		if GetTagValue(allBodies[i], "identifier") == tostring(target) then
-			bodies[#bodies + 1] = allBodies[i]
-		end
-	end
+	local bodies = getBodiesFromRegistry(target)
 	for i=1, #bodies do
-		--DebugCross(GetBodyTransform(bodies[i]).pos, 0, 1, 0)
 		QueryRejectBody(bodies[i])
 	end
+end
+
+function getBodiesFromRegistry(targetIdentifier)
+	targetIdentifier = targetIdentifier or identifier
+	local bodies = {}
+	local count = GetInt("level.rts.bodies." .. targetIdentifier .. ".count")
+	DebugPrint(count)
+	for i=1, count do
+		bodies[#bodies + 1] = GetInt("level.rts.bodies." .. targetIdentifier .. "." .. i)
+	end
+	--DebugPrint(#bodies)
+	return bodies
 end
 
 function setStatusInRegistry()
@@ -321,20 +326,15 @@ function setStatusInRegistry()
 end
 
 function getTargetTransform()
-	local target = getTargetId()
-	--DebugPrint(handle)
-	local allBodies = FindBodies("identifier", true)
-	local bodies = {}
-	for i=1, #allBodies do
-		if GetTagValue(allBodies[i], "identifier") == tostring(target) then
-			bodies[#bodies + 1] = allBodies[i]
-		end
+	return Transform(getTargetPosFromRegistry())
+end
+
+function getTargetPosFromRegistry()
+	local pos = Vec()
+	for i=1, 3 do
+		pos[i] = GetFloat("level.rts.target_pos." .. identifier .. "." .. i)
 	end
-	--DebugCross(GetBodyTransform(bodies[1]).pos, 0, 1, 0)
-	if VecLength(GetBodyTransform(bodies[1]).pos) == 0 then
-		return Transform(Vec(0, -100, 0))
-	end
-	return TransformCopy(GetBodyTransform(bodies[1]))
+	return pos
 end
 
 function hoverInit()
@@ -762,21 +762,6 @@ function weaponEmitFire(weapon, t, amount)
 				spawnFireTimer = 1
 			end
 		end
-		
-		--Hurt player
-		--[[local toPlayer = VecSub(getTargetTransform().pos, t.pos) --GetPlayerCameraTransform()
-		local distToPlayer = VecLength(toPlayer)
-		local distScale = clamp(1.0 - distToPlayer / 6.0, 0.0, 1.0)
-		if distScale > 0 then
-			toPlayer = VecNormalize(toPlayer)
-			if VecDot(d, toPlayer) > 0.8 or distToPlayer < 0.5 then
-				rejectAllBodies(humanoid.allBodies)
-				local hit = QueryRaycast(p, toPlayer, distToPlayer)
-				if not hit or distToPlayer < 0.5 then
-					--SetPlayerHealth(GetPlayerHealth() - 0.02 * weapon.strength * amount * distScale)
-				end
-			end	
-		end]]
 	end
 end
 
@@ -1165,7 +1150,7 @@ function navigationSetTarget(pos, timeout)
 end
 
 function navigationUpdate(dt)
-	DebugWatch(identifier, GetPathState())
+	--DebugWatch(identifier, GetPathState())
 	if GetPathState() == "busy" then
 		navigation.timeSinceProgress = 0
 		navigation.thinkTime = navigation.thinkTime + dt
@@ -1734,6 +1719,7 @@ function update(dt)
 			navigationClear()
 		else
 			--navigationSetTarget(head.lastSeenPos, 1.0 + clamp(head.timeSinceLastSeen, 0.0, 4.0))
+			
 			navigationSetTarget(getNavigationPosFromRegistry(), state.timeout)
 			humanoid.speedScale = config.huntSpeedScale
 			navigationUpdate(dt)
