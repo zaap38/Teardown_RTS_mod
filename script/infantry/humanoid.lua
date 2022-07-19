@@ -1,4 +1,6 @@
 #include "script/common.lua"
+--#include "../../main.lua"
+--#include "../main_road_detection.lua"
 
 function VecDist(a, b)
 	return VecLength(VecSub(a, b))
@@ -297,6 +299,12 @@ function getNavigationPosFromRegistry()
 	return pos
 end
 
+--Return a random vector of desired length
+function randVec(length)
+	local v = VecNormalize(Vec(math.random(-100,100), math.random(-100,100), math.random(-100,100)))
+	return VecScale(v, length)	
+end
+
 function getTargetId()
 	return GetInt("level.rts.target." .. identifier)
 end
@@ -313,11 +321,9 @@ function getBodiesFromRegistry(targetIdentifier)
 	targetIdentifier = targetIdentifier or identifier
 	local bodies = {}
 	local count = GetInt("level.rts.bodies." .. targetIdentifier .. ".count")
-	DebugPrint(count)
 	for i=1, count do
 		bodies[#bodies + 1] = GetInt("level.rts.bodies." .. targetIdentifier .. "." .. i)
 	end
-	--DebugPrint(#bodies)
 	return bodies
 end
 
@@ -326,7 +332,21 @@ function setStatusInRegistry()
 end
 
 function getTargetTransform()
-	return Transform(getTargetPosFromRegistry())
+	local pos = getTargetPosFromRegistry()
+	if getTargetId() == 0 then
+		pos = VecAdd(randVec(1), pos)
+	end
+	return Transform(pos)
+end
+
+function getAliveStatusInRegistry(identifier)
+	return GetBool("level.rts.alive." .. identifier)
+end
+
+function pathState()
+	local s = GetPathState()
+	--local s = getPathState(selfMd)
+	return s
 end
 
 function getTargetPosFromRegistry()
@@ -707,7 +727,9 @@ function weaponFire(weapon, pos, dir)
 	--Start one voxel ahead to not hit robot itself
 	pos = VecAdd(pos, VecScale(dir, 0.1))
 	
-	if head.seenTimer > 0.5 then
+	local targetId = getTargetId()
+
+	if head.seenTimer > 0.5 and (getAliveStatusInRegistry(targetId) or targetId == 0) then
 		if weapon.type == "gun" then
 			PlaySound(shootSound, pos, 1.0, false)
 			PointLight(pos, 1, 0.8, 0.6, 1.5)
@@ -1123,6 +1145,7 @@ end
 
 function navigationClear()
 	AbortPath()
+	--abortPath(selfMd)
 	navigation.state = "done"
 	navigation.path = {}
 	navigation.hasNewTarget = false
@@ -1152,6 +1175,7 @@ end
 function navigationUpdate(dt)
 	--DebugWatch(identifier, GetPathState())
 	if GetPathState() == "busy" then
+	--if getPathState(selfMd) == "busy" then
 		navigation.timeSinceProgress = 0
 		navigation.thinkTime = navigation.thinkTime + dt
 		if navigation.timeout == nil then
@@ -1159,19 +1183,24 @@ function navigationUpdate(dt)
 		end
 		if navigation.thinkTime > navigation.timeout then
 			AbortPath()
+			--abortPath(selfMd)
 		end
 	end
 
+	--if getPathState(selfMd) ~= "busy" then
 	if GetPathState() ~= "busy" then
 		--DebugWatch(identifier, GetPathState())
 		if GetPathState() == "done" or GetPathState() == "fail" then
+		--if getPathState(selfMd) == "done" or getPathState(selfMd) == "fail" then
 			if not navigation.resultRetrieved then
 				if GetPathLength() > 0.5 then
 					local step = 0.5
 					for l=step, GetPathLength(), step do
 						navigation.path[#navigation.path + 1] = GetPathPoint(l)
 					end
-				end			
+				end
+				--navigation.path = deepcopy(getPath(selfMd))
+
 				navigation.lastQueryTime = navigation.thinkTime
 				navigation.resultRetrieved = true
 				navigation.state = "move"
@@ -1214,16 +1243,19 @@ function navigationUpdate(dt)
 		QueryRequire("physical large")
 		rejectAllBodies(humanoid.allBodies)
 		QueryPath(startPos, target, 100, targetRadius, navigation.pathType)
+		--queryPath(selfMd, startPos, target)
 
 		navigation.timeSinceProgress = 0
 		navigation.hasNewTarget = false
 		navigation.resultRetrieved = false
 		navigation.state = "move"
 	end
-		
+	
 	navigationMove(dt)
 	
+	--if getPathState(selfMd) ~= "busy" and #navigation.path == 0 and not navigation.hasNewTarget then
 	if GetPathState() ~= "busy" and #navigation.path == 0 and not navigation.hasNewTarget then
+		--if getPathState(selfMd) == "done" or getPathState(selfMd) == "idle" then
 		if GetPathState() == "done" or GetPathState() == "idle" then
 			navigation.state = "done"
 		else
@@ -1441,6 +1473,7 @@ function debugState()
 end
 
 function init()
+	--initRoad()
 	configInit()
 	humanoidInit()
 	hoverInit()
@@ -1453,6 +1486,7 @@ function init()
 	stackInit()
 
 	identifier = 0
+	selfMd = nil
 
 	patrolLocations = FindLocations("patrol")
 	shootSound = LoadSound("tools/gun0.ogg", 8.0)
@@ -1903,6 +1937,7 @@ function playVoice(snd, pos, volume, bool)
 end
 
 function tick(dt)
+	--tickRoad(dt)
 	if not humanoid.enabled then
 		return
 	end
@@ -1918,6 +1953,11 @@ function tick(dt)
 		config.aggressive = true
 		config.practice = false
 	end
+	
+	--[[if md ~= nil and md.status > 3 and selfMd == nil then
+		DebugPrint(identifier)
+		selfMd = deepcopy(md)
+	end]]
 	
 	--Outline
 	local dist = VecDist(humanoid.bodyCenter, getTargetTransform().pos) --GetPlayerCameraTransform

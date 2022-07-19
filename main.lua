@@ -2,7 +2,7 @@
 --Modding documentation: http://teardowngame.com/modding
 --API reference: http://teardowngame.com/modding/api.html
 
---#include "script/infantry/humanoid.lua"
+--#include "script/main_road_detection.lua"
 
 --[[
 	keys:
@@ -40,10 +40,75 @@ function init()
 
 	soldiers = {}
 
+	nexus = {
+		bodies = {},
+		integrity = {
+			initial = 0,
+			current = 0,
+			min = 40
+		},
+		wave = 0,
+		alive = false,
+		money = 0,
+		moneyPerSecond = 100,
+		enemies = {},
+		cooldown = {
+			value = 0,
+			default = 4
+		}
+	}
+
+	cost = {
+		INFANTRY = 400,
+		HEAVY_INFANTRY = 800,
+		SNIPER = 600,
+		CAPTAIN = 800,
+		TANK = 6000,
+		DOC = 1200
+	}
+
+
+	--[[md = nil--makeMappingData(Vec(-100, -100, -100), Vec(100, 100, 100))
+	firstPassage = true
+	world = {}
+	world.aa, world.bb = GetBodyBounds(GetWorldBody())
+	world.aa = floorVec(world.aa)
+	world.bb = floorVec(world.bb)
+	firstQuery = true]]
 end
 
 
 function tick(dt)
+	
+	--[[if firstPassage then
+		firstPassage = false
+		local worldAA, worldBB = GetBodyBounds(GetWorldBody())
+		md = makeMappingData(worldAA, worldBB)
+	end
+	processDebugCross(md)
+	processUpdate(md)
+	
+	if md.status > 3 and firstQuery == true then
+		--exportToRegistry(md, false)
+		--importFromRegistry()
+		firstQuery = false
+		queryPath(md, Vec(0, 0, 0), Vec(0, 0, 50))
+	end
+	
+	-- to print the path
+	local path = getPath(md)
+	for i=1, #path - 1 do
+		DrawLine(path[i], path[i + 1])
+	end]]
+
+	if nexus.alive then
+		udpateNexus(dt)
+		if nexus.cooldown.value <= 0 then
+			spawnEnemieFromNexus()
+			nexus.cooldown.value = nexus.cooldown.default
+		end
+		DebugWatch("integrity", getNexusIntegrity())
+	end
 
 	if GetString("game.player.tool") == toolname then
 		if InputPressed("usetool") then
@@ -61,22 +126,35 @@ function tick(dt)
 		tool.toggled = false
 	end
 
+	local spawnTransform = Transform(TransformToParentPoint(GetPlayerCameraTransform(), Vec(0, 0, -1)))
+
 	if not tool.toggled then
 		if InputPressed("c") then
-			makeSoldier(ALLY_TEAM, GetPlayerCameraTransform())
+			makeSoldier(ALLY_TEAM, spawnTransform)
 		end
 		if InputPressed("v") then
-			makeSoldier(ENEMY_TEAM, GetPlayerCameraTransform())
+			makeSoldier(ENEMY_TEAM, spawnTransform)
+		end
+		if InputPressed("n") then
+			spawnNexus(spawnTransform)
 		end
 		if InputPressed("b") then
 			for i=1, #soldiers do
 				if soldiers[i].team == ENEMY_TEAM then
-					local pos = GetPlayerCameraTransform().pos
+					local pos = spawnTransform.pos
 					local offset = randVec(4)
 					offset[2] = 0
 					pos = VecAdd(pos, offset)
 					setNavigationPosInRegistry(pos, i)
 				end
+			end
+		end
+	else
+		spawnTransform = Transform(makeOffset(getNexusTransform().pos, 3))
+		if InputPressed("c") then
+			if nexus.money >= cost.INFANTRY then
+				nexus.money = nexus.money - cost.INFANTRY
+				makeSoldier(ALLY_TEAM, spawnTransform, INFANTRY)
 			end
 		end
 	end
@@ -191,6 +269,77 @@ end
 
 ---------------------------------
 
+function spawnNexus(t)
+	SetString("game.player.tool", toolname)
+	local entities = Spawn("vox/nexus.xml", t)
+	nexus.bodies = {}
+	for i=1, #entities do
+		if GetEntityType(entities[i]) == "body" then
+			nexus.bodies[#nexus.bodies + 1] = entities[i]
+		end
+	end
+	initNexus()
+end
+
+function initNexus()
+	nexus.integrity.initial = getNexusVoxCount()
+	nexus.integrity.current = nexus.integrity.initial
+	nexus.wave = 1
+	nexus.alive = true
+	nexus.enemies = {}
+	nexus.cooldown.value = nexus.cooldown.default
+end
+
+function getNexusVoxCount()
+	local totalVox = 0
+	for i=1, #nexus.bodies do
+		local shapes = GetBodyShapes(nexus.bodies[i])
+		for j=1, #shapes do
+			totalVox = totalVox + GetShapeVoxelCount(shapes[j])
+		end
+	end
+	return totalVox
+end
+
+function getNexusIntegrity()
+	return 100 * nexus.integrity.current / nexus.integrity.initial
+end
+
+function getNexusTransform()
+	return TransformCopy(GetBodyTransform(nexus.bodies[1]))
+end
+
+function udpateNexus(dt)
+	local value = nexus.moneyPerSecond * dt
+	nexus.money = nexus.money + (value - (value % 1))
+	nexus.integrity.current = getNexusVoxCount()
+	nexus.alive = nexus.integrity.min <= getNexusIntegrity()
+	nexus.cooldown.value = nexus.cooldown.value - dt
+end
+
+function makeOffset(origin, dist)
+	local offset = randVec(dist)
+	offset[2] = math.abs(offset[2])
+
+	local flat = deepcopy(offset)
+	flat[2] = 0
+	while VecLength(flat) < dist * 0.9 do
+		offset = randVec(dist)
+		offset[2] = math.abs(offset[2])
+		flat = deepcopy(offset)
+		flat[2] = 0
+	end
+	return VecAdd(origin, offset)
+end
+
+function spawnEnemieFromNexus()
+	local offset = makeOffset(getNexusTransform().pos, rand(70, 100))
+	local soldier = makeSoldier(ENEMY_TEAM, Transform(offset), INFANTRY)
+
+	offset = makeOffset(getNexusTransform().pos, 5)
+	setNavigationPosInRegistry(offset, soldier.id)
+end
+
 function setStrategicView()
 	local pos = Vec(tool.x, tool.height, tool.y)
 	SetCameraTransform(Transform(pos, QuatEuler(-90, 0, 0)))
@@ -276,7 +425,7 @@ function command()
 
 		for i=1, #tool.selected do
 			if tool.selected[i].team == ALLY_TEAM then
-				local offset = randVec(math.min((#tool.selected - 1 * 0.5), 4))
+				local offset = randVec(math.min((#tool.selected - 1 * 0.9), 5))
 				offset[2] = 0
 				local navPoint = VecAdd(hitPos, offset)
 				setNavigationPosInRegistry(navPoint, tool.selected[i].id)
@@ -321,6 +470,8 @@ end
 
 function makeSoldier(team, t, typeSoldier)
 
+	typeSoldier = typeSoldier or INFANTRY
+
 	local soldier = {}
 	if typeSoldier == INFANTRY then
 		soldier = initInfantry(team, t)
@@ -331,6 +482,7 @@ function makeSoldier(team, t, typeSoldier)
 
 	soldiers[#soldiers + 1] = soldier
 	setBodiesInRegistry(soldier.id)
+	return soldier
 end
 
 function setNavigationPosInRegistry(pos, identifier)
@@ -344,7 +496,14 @@ function setTargetIdInRegistry(identifierTarget, identifier)
 end
 
 function setTargetPosInRegistry(identifierTarget, identifier)
-	local pos = soldiers[identifierTarget].t.pos
+
+	local pos
+	if identifierTarget == 0 then -- targeting nexus
+		pos = getNexusTransform().pos
+	else
+		pos = soldiers[identifierTarget].t.pos
+	end
+
 	for i=1, 3 do
 		SetFloat("level.rts.target_pos." .. identifier .. "." .. i, pos[i])
 	end
@@ -367,25 +526,44 @@ end
 function getClosestTargetIdentifier(soldier)
 
 	local best = {
-		id = 0,
+		id = nil,
 		dist = 0
 	}
 	for i=1, #soldiers do
 		if soldiers[i].team ~= soldier.team and getAliveStatusInRegistry(soldiers[i].id) then
 			local dist = VecLength(VecSub(soldiers[i].t.pos, soldier.t.pos))
-			if best.id == 0 or dist < best.dist then
+			if best.id == nil or dist < best.dist then
 				best.id = soldiers[i].id
 				best.dist = dist
 			end
 		end
 	end
-	return best.id
+	return best.id, best.dist
+end
+
+function getClosestTargetIdentifierIncludingNexus(soldier)
+	local best = {
+		id = nil,
+		dist = 0
+	}
+	best.id, best.dist = getClosestTargetIdentifier(soldier)
+	local distToNexus = VecLength(VecSub(getNexusTransform().pos, soldier.t.pos))
+	if best.id == nil or distToNexus <= best.dist then
+		best.id = 0
+		best.dist = distToNexus
+	end
+	return best.id, best.dist
 end
 
 function setAllTarget()
 	for i=1, #soldiers do
-		local target = getClosestTargetIdentifier(soldiers[i])
-		if target ~= 0 then
+		local target
+		if soldiers[i].team == ALLY_TEAM or not nexus.alive then
+			target = getClosestTargetIdentifier(soldiers[i])
+		else
+			target = getClosestTargetIdentifierIncludingNexus(soldiers[i])
+		end
+		if target ~= nil then
 			setTargetPosInRegistry(target, i)
 			setTargetIdInRegistry(target, i)
 		end
