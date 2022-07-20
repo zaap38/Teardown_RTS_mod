@@ -66,6 +66,8 @@ config.stepSound = "m"
 config.practice = false
 config.maxHealth = 100.0
 
+firstLoop = true
+
 PATH_NODE_TOLERANCE = 0.8
 
 function configInit()
@@ -139,6 +141,18 @@ function rejectAllBodies(bodies)
 	ignoreTargetBodies()
 end
 
+function setHealthInRegistry()
+	SetFloat("level.rts.health." .. identifier, humanoid.health)
+end
+
+function getTypeInRegistry()
+	return GetInt("level.rts.type." .. identifier)
+end
+
+function getHealingStatusInRegistry()
+	return GetBool("level.rts.healing_status." .. identifier)
+end
+
 -----------------------------------------------------------------------
 
 
@@ -173,6 +187,18 @@ humanoid.outlineAlpha = 0
 humanoid.canSensePlayer = false
 humanoid.playerPos = Vec()
 humanoid.health = 100.0
+identifier = GetTagValue(humanoid.body, "identifier")
+local soldierType = getTypeInRegistry()
+if soldierType == 1 then
+
+elseif soldierType == 2 then
+	DebugPrint("hey")
+	humanoid.health = 150.0
+elseif soldierType == 3 then
+	humanoid.health = 75.0
+elseif soldierType == 6 then
+
+end
 humanoid.headDamageScale = 3.0
 humanoid.torsoDamageScale = 1.4
 humanoid.torso = 0
@@ -201,7 +227,7 @@ function humanoidInit()
 	humanoid.allShapes = FindShapes()
 	humanoid.allJoints = FindJoints()
 
-	humanoid.health = config.maxHealth
+	--humanoid.health = config.maxHealth
 
 	humanoidSetAxes()
 	humanoidCollide(true)
@@ -688,7 +714,7 @@ function weaponsInit()
 			if not weapon.fireCooldown then weapon.fireCooldown = 0.08 end
 			if not weapon.shotsPerRound then weapon.shotsPerRound = 6 end
 			if not weapon.spread then weapon.spread = 0.01 end
-			if not weapon.strength then weapon.strength = 1.0 end
+			if not weapon.strength then weapon.strength = 2.0 end
 			if not weapon.maxDist then weapon.maxDist = 100.0 end
 			local b = GetShapeBody(shape)
 			local bt = GetBodyTransform(b)
@@ -720,12 +746,14 @@ function weaponFire(weapon, pos, dir)
 
 	-- Add more spread up based on aim, so that the first bullets never (well, rarely) hit player
 	local extraSpread = math.min(0.5, 2.0 / humanoid.distToPlayer)
+	extraSpread = 0
 	spread = spread	+ (1.0-head.aim) * extraSpread
 
 	dir = VecNormalize(VecAdd(dir, VecScale(perp, spread)))
 
 	--Start one voxel ahead to not hit robot itself
 	pos = VecAdd(pos, VecScale(dir, 0.1))
+	pos = VecAdd(pos, VecScale(dir, 0.9))
 	
 	local targetId = getTargetId()
 
@@ -735,6 +763,7 @@ function weaponFire(weapon, pos, dir)
 			PointLight(pos, 1, 0.8, 0.6, 1.5)
 			Shoot(pos, dir, 0, weapon.strength)
 		elseif weapon.type == "rocket" then
+			--pos = VecAdd(pos, VecScale(dir, 0.9))
 			PlaySound(rocketSound, pos, 1.0, false)
 			Shoot(pos, dir, 1, weapon.strength)
 		end
@@ -1943,6 +1972,28 @@ function tick(dt)
 	end
 
 	identifier = GetTagValue(humanoid.body, "identifier")
+	if firstLoop then
+		firstLoop = false
+		local soldierType = getTypeInRegistry()
+		if soldierType == 1 then
+
+		elseif soldierType == 2 then
+			config.viewDistance = 35
+			config.maxHealth = 150
+		elseif soldierType == 3 then
+			config.viewDistance = 50
+			config.maxHealth = 75
+		elseif soldierType == 6 then
+
+		end
+		humanoid.health = config.maxHealth
+	end
+	setHealthInRegistry()
+
+	if getHealingStatusInRegistry() then
+		humanoid.health = math.min(config.maxHealth, humanoid.health + dt * 10)
+		PointLight(humanoid.bodyCenter, 1, 0, 0, 1)
+	end
 	--DebugPrint("id: " .. identifier .. " - " .. humanoid.body)
 	
 	if HasTag(humanoid.body, "turnhostile") then
@@ -2019,8 +2070,8 @@ function hitByExplosion(strength, pos)
 			humanoid.stunned = math.max(humanoid.stunned, f * 4.0)
 		end
 
-		local damage = f * 20.0
-		humanoid.health = humanoid.health - f * 20.0
+		local damage = f * 40.0
+		humanoid.health = humanoid.health - damage
 		playVoice(hurtSound, humanoid.bodyCenter, 1.0, false)
 		
 		--Give robots an extra push if they are not already moving that much

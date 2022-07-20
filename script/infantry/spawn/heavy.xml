@@ -1,77 +1,77 @@
 <prefab version="1.0.0">
-	<group name="combinesoldier" pos="14.2 3.0 -9.7" tags="type infantry">
+	<group name="combinesoldier" pos="14.2 3.0 -9.7" tags="type heavy">
 		<script name="combine" pos="-0.5 0.0 0.1" rot="0.0 -90.0 0.0" file="MOD/script/infantry/humanoid.lua" param0="type=investigate chase">
 			<group name="leftarm" pos="-0.8 1.5 -0.1">
 				<body name="lefthand" tags="lefthand" pos="-0.3 0.0 0.1" rot="0.0 0.0 0.0" dynamic="true">
-					<vox tags="unbreakable" pos="0.0 0.0 0.0" file="MOD/script/infantry/combine.vox" object="lefthand"/>
+					<vox tags="unbreakable" pos="0.0 0.0 0.0" file="MOD/script/infantry/heavy.vox" object="lefthand"/>
 				</body>
 				<body name="leftforearm" pos="0.0 0.0 0.0" rot="0.0 0.0 0.0" dynamic="true">
-					<vox tags="unbreakable" pos="-0.1 0.0 0.1" file="MOD/script/infantry/combine.vox" object="leftforearm"/>
+					<vox tags="unbreakable" pos="-0.1 0.0 0.1" file="MOD/script/infantry/heavy.vox" object="leftforearm"/>
 					<joint name="leftwrist" pos="-0.2 0.1 0.1" rot="-90.0 0.0 0.0" type="hinge" collide="false" limits="-45.0 45.0"/>
 				</body>
 				<body name="leftupperarm" pos="0.3 0.0 0.0" rot="0.0 0.0 0.0" dynamic="true">
-					<vox tags="unbreakable" pos="-0.1 0.0 0.1" file="MOD/script/infantry/combine.vox" object="leftupperarm"/>
+					<vox tags="unbreakable" pos="-0.1 0.0 0.1" file="MOD/script/infantry/heavy.vox" object="leftupperarm"/>
 					<joint name="leftelbow" pos="-0.2 0.1 0.2" rot="-90.0 0.0 0.0" type="hinge" collide="false" limits="0.0 160.0"/>
 				</body>
 			</group>
 			<group name="leftleg" pos="-0.3 0.0 0.0">
 				<body name="leftfoot" tags="leftfoot" pos="0.1 0.0 -0.1" rot="0.0 0.0 0.0" dynamic="true">
-					<vox tags="unbreakable" pos="0.0 0.0 0.0" file="MOD/script/infantry/combine.vox" object="leftfoot"/>
+					<vox tags="unbreakable" pos="0.0 0.0 0.0" file="MOD/script/infantry/heavy.vox" object="leftfoot"/>
 				</body>
 				<body name="leftshin" pos="0.0 0.2 -0.1" rot="0.0 0.0 0.0" dynamic="true">
-					<vox tags="unbreakable" pos="0.0 0.0 0.1" file="MOD/script/infantry/combine.vox" object="leftshin"/>
+					<vox tags="unbreakable" pos="0.0 0.0 0.1" file="MOD/script/infantry/heavy.vox" object="leftshin"/>
 					<joint name="leftankle" pos="0.1 0.0 0.1" rot="0.0 90.0 -90.0" type="hinge" collide="false" limits="-45.0 45.0"/>
 				</body>
 				<body name="leftthigh" pos="0.0 0.6 -0.1" rot="0.0 0.0 0.0" dynamic="true">
-					<vox tags="unbreakable" pos="0.0 0.0 0.1" file="MOD/script/infantry/combine.vox" object="leftthigh"/>
+					<vox tags="unbreakable" pos="0.0 0.0 0.1" file="MOD/script/infantry/heavy.vox" object="leftthigh"/>
 					<joint name="leftknee" pos="0.1 0.0 0.0" rot="0.0 90.0 -90.0" type="hinge" collide="false" limits="0.0 160.0"/>
 				</body>
 			</group>
 			<group name="rightleg" pos="0.3 0.0 0.0">
 				<body name="rightfoot" tags="rightfoot" pos="-0.1 0.0 -0.1" rot="0.0 0.0 0.0" dynamic="true">
-					<vox tags="unbreakable" pos="0.0 0.0 0.0" file="MOD/script/infantry/combine.vox" object="rightfoot"/>
+					<vox tags="unbreakable" pos="0.0 0.0 0.0" file="MOD/script/infantry/heavy.vox" object="rightfoot"/>
 				</body>
 				<body name="rightshin" pos="0.0 0.2 -0.1" rot="0.0 0.0 0.0" dynamic="true">
-					<vox tags="unbreakable" pos="-0.1 0.0 0.1" file="MOD/script/infantry/combine.vox" object="rightshin"/>
+					<vox tags="unbreakable" pos="-0.1 0.0 0.1" file="MOD/script/infantry/heavy.vox" object="rightshin"/>
 					<joint name="rightankle" pos="-0.1 0.0 0.1" rot="0.0 -90.0 -90.0" type="hinge" collide="false" limits="-45.0 45.0"/>
 				</body>
 				<body name="rightthigh" pos="0.0 0.6 -0.1" rot="0.0 0.0 0.0" dynamic="true">
-					<vox tags="unbreakable" pos="-0.1 0.0 0.1" file="MOD/script/infantry/combine.vox" object="rightthigh"/>
+					<vox tags="unbreakable" pos="-0.1 0.0 0.1" file="MOD/script/infantry/heavy.vox" object="rightthigh"/>
 					<joint name="rightknee" pos="-0.1 0.0 0.0" rot="0.0 -90.0 -90.0" type="hinge" collide="false" limits="-160.0 0.0"/>
 				</body>
 			</group>
 			<group name="rightarm" pos="0.8 1.5 -0.1">
 				<body name="righthand" tags="righthand" pos="0.3 0.0 0.1" rot="0.0 0.0 0.0" dynamic="true">
-					<vox tags="unbreakable" pos="0.0 0.0 0.0" file="MOD/script/infantry/combine.vox" object="righthand"/>
+					<vox tags="unbreakable" pos="0.0 0.0 0.0" file="MOD/script/infantry/heavy.vox" object="righthand"/>
 					<joint name="righthand" pos="0.1 0.1 0.0" rot="-90.0 -180.0 0.0" rotstrength="0.0001" rotspring="0.0" collide="false"/>
 				</body>
 				<body name="rightforearm" pos="0.1 0.0 0.0" rot="0.0 0.0 0.0" dynamic="true">
-					<vox tags="unbreakable" pos="-0.1 0.0 0.1" file="MOD/script/infantry/combine.vox" object="rightforearm"/>
+					<vox tags="unbreakable" pos="-0.1 0.0 0.1" file="MOD/script/infantry/heavy.vox" object="rightforearm"/>
 					<joint name="rightwrist" pos="0.1 0.1 0.1" rot="-90.0 -180.0 0.0" type="hinge" collide="false" limits="-45.0 45.0"/>
 				</body>
 				<body name="rightupperarm" pos="-0.3 0.0 0.0" rot="0.0 0.0 0.0" dynamic="true">
-					<vox tags="unbreakable" pos="0.0 0.0 0.1" file="MOD/script/infantry/combine.vox" object="rightupperarm"/>
+					<vox tags="unbreakable" pos="0.0 0.0 0.1" file="MOD/script/infantry/heavy.vox" object="rightupperarm"/>
 					<joint name="rightelbow" pos="0.2 0.1 0.2" rot="-90.0 -180.0 0.0" type="hinge" collide="false" limits="-160.0 0.0"/>
 				</body>
 			</group>
 			<body name="head" tags="head" pos="0.0 1.7 0.0" dynamic="true">
-				<vox tags="unbreakable" file="MOD/script/infantry/combine.vox" object="head"/>
+				<vox tags="unbreakable" file="MOD/script/infantry/heavy.vox" object="head"/>
 			</body>
 			<body name="lowertorso" tags="lowertorso unbreakable" pos="0.0 1.0 -0.1" dynamic="true">
-				<vox tags="unbreakable" pos="0.0 -0.3 0.1" file="MOD/script/infantry/combine.vox" object="lowertorso"/>
+				<vox tags="unbreakable" pos="0.0 -0.3 0.1" file="MOD/script/infantry/heavy.vox" object="lowertorso"/>
 				<joint name="waist" pos="0.0 0.1 0.1" collide="false"/>
 				<joint name="righthip" pos="-0.2 -0.1 0.1" collide="false"/>
 				<joint name="lefthip" pos="0.2 -0.1 0.1" collide="false"/>
 			</body>
 			<body name="uppertorso" tags="uppertorso unbreakable" pos="0.0 1.1 -0.1" dynamic="true">
-				<vox tags="unbreakable" pos="0.0 0.0 0.1" file="MOD/script/infantry/combine.vox" object="uppertorso"/>
+				<vox tags="unbreakable" pos="0.0 0.0 0.1" file="MOD/script/infantry/heavy.vox" object="uppertorso"/>
 				<joint name="neck" tags="neckjoint" pos="0.0 0.6 0.1" rot="-90.0 90.0 0.0" type="hinge" collide="false" limits="-60.0 60.0"/>
 				<joint name="leftshoulder" pos="-0.4 0.5 0.1" collide="false"/>
 				<joint name="rightshoulder" pos="0.4 0.5 0.1" collide="false"/>
 			</body>
 			<body name="weapon" tags="aim" pos="1.2 1.5 -0.1" rot="0.0 -90.0 90.0" dynamic="true">
-				<vox tags="unbreakable" pos="0.1 -0.2 -0.3" file="MOD/script/infantry/smg.vox"/>
-				<location name="weapon" tags="weapon=gun strength=0.3" pos="0.1 0.2 -0.9"/>
+				<vox tags="unbreakable" pos="0.1 -0.2 -0.3" file="MOD/script/infantry/rocket.vox"/>
+				<location name="weapon" tags="weapon=rocket strength=1.0 count=1 spread=0.0 charge=4.0" pos="0.1 0.2 -0.9"/>
 			</body>
 		</script>
 	</group>

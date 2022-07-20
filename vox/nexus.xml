@@ -1,0 +1,8 @@
+<prefab version="0.9.3">
+	<group id_="1479106665" open_="true" name="instance=MOD/prefabs/nexus.xml" pos="0 0 0" rot="0.0 0.0 0.0">
+		<body id_="597946945" open_="true" tags="nexus_rts" pos="0 0 0" dynamic="true">
+			<vox id_="1872577825" file="MOD/vox/nexus.vox"/>
+		</body>
+	</group>
+</prefab>
+

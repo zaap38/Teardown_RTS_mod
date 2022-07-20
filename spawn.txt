@@ -2,4 +2,7 @@
 #List spawnable instances here in this format (path is relative to the mod folder):
 #path/to/prefab.xml : Category/Name
 vox/nexus.xml : Buildings/Nexus
-
+script/infantry/spawn/combine.xml : Infantry/Infantry
+script/infantry/spawn/doc.xml : Infantry/Doc
+script/infantry/spawn/sniper.xml : Infantry/Sniper
+script/infantry/spawn/heavy.xml : Infantry/Heavy Infantry
