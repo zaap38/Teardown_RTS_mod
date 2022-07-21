@@ -61,8 +61,13 @@ function init()
 			value = 0,
 			default = 20
 		},
-		roundRobin = {}
+		roundRobin = {},
+		spawns = {},
+		spawnCount = 0,
+		tentative = Vec(),
+		spawnInitTime = 0
 	}
+	oldCount = #nexus.spawns
 
 	cost = {
 		INFANTRY = 400,
@@ -122,8 +127,8 @@ function tick(dt)
 	end]]
 
 	if nexus.alive then
-		udpateNexus(dt)
-		if nexus.cooldown.value <= 0 and nexus.maxEnemiesCount > nexus.enemiesCount then
+		updateNexus(dt)
+		if nexus.cooldown.value <= 0 and nexus.maxEnemiesCount > nexus.enemiesCount and nexus.wave >= 0 then
 			spawnEnemieFromNexus()
 			nexus.cooldown.value = nexus.cooldown.default
 		end
@@ -335,7 +340,7 @@ end
 function initNexus()
 	nexus.integrity.initial = getNexusVoxCount()
 	nexus.integrity.current = nexus.integrity.initial
-	nexus.wave = 1
+	nexus.wave = 0 --1
 	nexus.alive = true
 	nexus.enemies = {}
 	nexus.money = 800
@@ -349,6 +354,14 @@ function initNexus()
 	nexus.roundRobin[#nexus.roundRobin + 1] = HEAVY_INFANTRY
 	nexus.roundRobin[#nexus.roundRobin + 1] = SNIPER
 	nexus.roundRobin[#nexus.roundRobin + 1] = DOC
+	initNexusSpawns(4)
+end
+
+function initNexusSpawns(count)
+	nexus.spawns = {}
+	nexus.spawnCount = count
+	nexus.tentative = Vec()
+	nexus.spawnInitTime = 0
 end
 
 function getNexusVoxCount()
@@ -370,7 +383,59 @@ function getNexusTransform()
 	return TransformCopy(GetBodyTransform(nexus.bodies[1]))
 end
 
-function udpateNexus(dt)
+function makeSpawn()
+	if #nexus.spawns >= nexus.spawnCount then
+		nexus.wave = 1
+		return
+	end
+
+	local state = GetPathState()
+	if oldCount ~= #nexus.spawns then
+		state = "idle"
+	end
+	oldCount = #nexus.spawns
+	
+	if state == "idle" or state == "fail" then
+		local pos = getNexusTransform().pos
+		local offset = VecAdd(makeOffset(pos, rand(70, 90)), Vec(0, 100, 0))
+		local dir = Vec(0, -1, 0)
+		local hit, dist, normal, shape = QueryRaycast(offset, dir, 300, 3)
+		
+		if hit then
+			local hitPos = VecAdd(offset, VecScale(dir, dist - 0.5))
+			nexus.tentative = hitPos
+
+			minDist = 10000
+			for i=1, #nexus.spawns do
+				local distance = VecLength(VecSub(nexus.spawns[i], hitPos))
+				if distance < minDist then
+					minDist = distance
+				end
+			end
+
+			if not IsPointInWater(hitPos) and minDist >= 20 then
+				QueryPath(hitPos, pos, 200)
+				nexus.spawnInitTime = 0
+			end
+		end
+	elseif state == "busy" then
+		if nexus.spawnInitTime >= 5 then
+			AbortPath()
+		end
+	elseif state == "done" then
+		nexus.spawns[#nexus.spawns +  1] = deepcopy(nexus.tentative)
+	end
+end
+
+function updateNexus(dt)
+
+	if nexus.wave == 0 then
+		nexus.spawnInitTime = nexus.spawnInitTime + dt
+		makeSpawn()
+		DrawLine(nexus.tentative, getNexusTransform().pos)
+		return
+	end
+	
 	local value = nexus.moneyPerSecond * dt
 	nexus.money = nexus.money + value
 	nexus.integrity.current = getNexusVoxCount()
@@ -422,7 +487,7 @@ function makeOffset(origin, dist, fillInside)
 end
 
 function spawnEnemieFromNexus()
-	local offset = makeOffset(getNexusTransform().pos, rand(60, 70))
+	local offset = nexus.spawns[rand(1, #nexus.spawns)] --makeOffset(getNexusTransform().pos, rand(60, 70))
 	local soldier = makeSoldier(ENEMY_TEAM, Transform(offset), nexus.roundRobin[rand(1, #nexus.roundRobin)])
 
 	offset = makeOffset(getNexusTransform().pos, 5)
@@ -762,7 +827,7 @@ function getClosestTargetIdentifierIncludingNexus(soldier)
 	best.id, best.dist = getClosestTargetIdentifier(soldier)
 	local distToNexus = VecLength(VecSub(getNexusTransform().pos, soldier.t.pos))
 	if best.id == nil or distToNexus <= best.dist then
-		best.id = 0
+		best.id = nil
 		best.dist = distToNexus
 	end
 	return best.id, best.dist
@@ -811,7 +876,9 @@ function setAllTarget()
 			end
 			setHealingStatusInRegistry(i, healing)
 		end
-		setTargetPosInRegistry(getTargetId(i), i)
+		if getTargetId(i) ~= 0 or soldiers[i].team == ENEMY_TEAM then
+			setTargetPosInRegistry(getTargetId(i), i)
+		end
 	end
 end
 

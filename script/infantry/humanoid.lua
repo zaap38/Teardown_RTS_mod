@@ -1272,6 +1272,7 @@ function navigationUpdate(dt)
 		QueryRequire("physical large")
 		rejectAllBodies(humanoid.allBodies)
 		QueryPath(startPos, target, 100, targetRadius, navigation.pathType)
+		--DebugPrint(identifier)
 		--queryPath(selfMd, startPos, target)
 
 		navigation.timeSinceProgress = 0
