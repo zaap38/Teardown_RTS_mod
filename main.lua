@@ -3,6 +3,7 @@
 --API reference: http://teardowngame.com/modding/api.html
 
 --#include "script/main_road_detection.lua"
+#include script/RTSInterface.lua
 
 --[[
 	keys:
@@ -133,9 +134,6 @@ function tick(dt)
 			nexus.cooldown.value = nexus.cooldown.default
 		end
 	end
-	DebugWatch("integrity", getNexusIntegrity())
-	DebugWatch("money", nexus.money)
-	DebugWatch("wave", nexus.wave)
 
 	if GetString("game.player.tool") == toolname then
 		if InputPressed("usetool") then
@@ -204,7 +202,18 @@ function tick(dt)
 				makeSoldier(ALLY_TEAM, spawnTransform, DOC)
 			end
 		end
+
 	end
+
+	if InputPressed("p") then
+		nexus.waveCooldown.value = 0
+		nexus.money = 10000
+	end
+
+	SetFloat('level.rts.stats.integrity', getNexusIntegrity())
+	SetFloat('level.rts.stats.money', nexus.money)
+	SetInt('level.rts.stats.wave', nexus.wave)
+	SetFloat('level.rts.stats.waveCooldown', nexus.waveCooldown.value)
 end
 
 
@@ -218,6 +227,8 @@ end
 
 
 function draw(dt)
+	RTSDrawMenu()
+	
 	if isLoading then
 		return
 	end
