@@ -123,7 +123,9 @@ function tick(dt)
 		--queryPath(md, Vec(0, 0, 0), Vec(0, 0, 50))
 		if #queryQueue > 0 then
 			queryQueue[1].status = getPathState(md)
-			setPathStatusInRegistry(queryQueue[1].identifier, queryQueue[1].status)
+			for i=1, #queryQueue[1].askers do
+				setPathStatusInRegistry(queryQueue[1].askers[i], queryQueue[1].status)
+			end
 			if queryQueue[1].status == "idle" then
 				--DebugPrint("new " .. tableToString(queryQueue))
 				queryPath(md, queryQueue[1].start, queryQueue[1].target)
@@ -132,8 +134,15 @@ function tick(dt)
 				local newQueue = {}
 				if queryQueue[1].status == "done" then
 					local path = getSmoothPath(md) --getPath(md)
-					lastPath = deepcopy(path)
-					setPathInRegistry(queryQueue[1].identifier, path)
+					--lastPath = deepcopy(path)
+					for i=1, #queryQueue[1].askers do
+						setPathInRegistry(queryQueue[1].askers[i], path)
+					end
+					--local str = ""
+					--for i=1, #queryQueue[1].askers do
+						--str = str .. ", " .. queryQueue[1].askers[i]
+					--end
+					--DebugPrint(str)
 				end
 				abortPath(md)
 				
@@ -669,8 +678,9 @@ function command()
 		for i=1, #tool.selected do
 			if tool.selected[i].team == ALLY_TEAM then
 				if targetId == nil then
-					local offset = makeOffset(hitPos, math.min(((#tool.selected - 1) * 1.7), 10), true)
-					setNavigationPosInRegistry(offset, tool.selected[i].id)
+					--local offset = makeOffset(hitPos, math.min(((#tool.selected - 1) * 1.7), 10), true)
+					--setNavigationPosInRegistry(offset, tool.selected[i].id)
+					setNavigationPosInRegistry(hitPos, tool.selected[i].id)
 				end
 				if targetId ~= nil then
 					setTargetPosInRegistry(targetId, tool.selected[i].id)
@@ -911,9 +921,19 @@ function getAbortPathInRegistry(identifier)
 	return value
 end
 
+function isInTable(t, v)
+	for i=1, #t do
+		if t[i].id == v then
+			return true
+		end
+	end
+	return false
+end
+
 function setAllTarget()
 
 	local docs = getDocs()
+	local pathQuery = nil
 
 	for i=1, #soldiers do
 		if getAliveStatusInRegistry(soldiers[i].id) then
@@ -937,42 +957,26 @@ function setAllTarget()
 				end
 				setHealingStatusInRegistry(i, healing)
 			end
-			if getTargetId(i) ~= 0 or soldiers[i].team == ENEMY_TEAM then
+			--if getTargetId(i) ~= 0 or soldiers[i].team == ENEMY_TEAM then
 				setTargetPosInRegistry(getTargetId(i), i)
-			end
+			--end
 			if getPathQueryInRegistry(i) then
 				--DebugCross(getNavigationPosFromRegistry(i), 0, 1, 0)
 				setPathQueryInRegistry(i, false)
-				local exist = false
-				for j=1, #queryQueue do
-					if queryQueue[j].identifier == i then
-						exist = true
-						break
-					end
+
+				if pathQuery == nil then
+					pathQuery = {
+						askers = {},
+						status = "idle",
+						start = soldiers[i].t.pos,
+						target = getNavigationPosFromRegistry(i)
+					}
 				end
-				if exist then
-					local newQueue = {}
-					for i=1, #queryQueue do
-						if i == 1 then
-							queryQueue[1].status = "fail"
-							break
-						else
-							if queryQueue[i].identifier ~= i then
-								newQueue[#newQueue + 1] = deepcopy(queryQueue[i])
-							end
-						end
-					end
-					queryQueue = newQueue
+				if soldiers[i].team == ENEMY_TEAM or isInTable(tool.selected, i) then
+					pathQuery.askers[#pathQuery.askers + 1] = i
 				end
-				queryQueue[#queryQueue + 1] = {
-					identifier = i,
-					status = "idle",
-					start = soldiers[i].t.pos,
-					target = getNavigationPosFromRegistry(i)
-				}
-				--DebugPrint(tableToString(queryQueue))
 			end
-			if getAbortPathInRegistry(i) then
+			--[[if getAbortPathInRegistry(i) then
 				local newQueue = {}
 				for i=1, #queryQueue do
 					if i == 1 then
@@ -985,7 +989,12 @@ function setAllTarget()
 					end
 				end
 				queryQueue = newQueue
-			end
+			end]]
+		end
+	end
+	if pathQuery ~= nil then
+		if #pathQuery.askers > 0 then
+			queryQueue[#queryQueue + 1] = pathQuery
 		end
 	end
 end

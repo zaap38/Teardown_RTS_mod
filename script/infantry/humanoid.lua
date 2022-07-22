@@ -1228,7 +1228,8 @@ function navigationPrunePath()
 end
 
 function navigationClear()
-	AbortPath()
+	--AbortPath()
+	abortPathInRegistry()
 	--abortPath(selfMd)
 	navigation.state = "done"
 	navigation.path = {}
@@ -1238,16 +1239,23 @@ function navigationClear()
 	navigation.blocked = 0
 	navigation.unblock = 0
 	navigation.vertical = 0
-	navigation.target = Vec(0, -100, 0)
+	--navigation.target = Vec(0, -100, 0)
 	navigation.thinkTime = 0
 	navigation.lastQueryTime = 0
 	navigation.unblockTimer = 0
 	navigation.timeSinceProgress = 0
 end
 
+function vecToStr(v)
+	return v[1] .. " " .. v[2] .. " " .. v[3]
+end
+
 function navigationSetTarget(pos, timeout)
 	pos = truncateToGround(pos)
-	if VecDist(navigation.target, pos) > 2.0 then
+	if VecDist(navigation.target, pos) > 3.5 then--2.0 then
+		--delayBeforeNewPos = 5
+		--DebugPrint(identifier .. " old " .. vecToStr(navigation.target))
+		--DebugPrint(identifier .. " new " .. vecToStr(pos))
 		navigation.target = VecCopy(pos)
 		navigation.hasNewTarget = true
 		navigation.state = "move"
@@ -1341,7 +1349,9 @@ function navigationUpdate(dt)
 		--DebugWatch("nav", getNavigationPosFromRegistry())
 		--DebugWatch("tgt", target)
 		--DebugCross(target)
-		askPathQuery()
+		if navigation.path == {} or VecLength(VecSub(navigation.path[#navigation.path], navigation.target)) >= 5 then
+			askPathQuery()
+		end
 		--DebugPrint(get)
 		--queryPath(selfMd, startPos, target)
 
@@ -1374,7 +1384,7 @@ function navigationMove(dt)
 			if navigation.timeSinceProgress > 5.0 then
 				navigation.hasNewTarget = true
 				navigation.path = {}
-				DebugPrint("reset")
+				--DebugPrint("reset")
 			end
 		end
 		if navigation.unblock > 0 then
@@ -1387,7 +1397,8 @@ function navigationMove(dt)
 			dv[2] = 0
 			local d = VecLength(dv)
 
-			if distToFirstPathPoint < 3.5 then--2.5 then
+			--DebugPrint(identifier .. " - " .. distToFirstPathPoint)
+			if distToFirstPathPoint < 4.5 then--2.5 then
 				if d < PATH_NODE_TOLERANCE then
 					if #navigation.path > 1 then
 						--Measure verticality which should decrease speed
@@ -1588,7 +1599,7 @@ function init()
 	stackInit()
 
 	identifier = 0
-	selfMd = nil
+	delayBeforeNewPos = 0
 
 	patrolLocations = FindLocations("patrol")
 	shootSound = LoadSound("tools/gun0.ogg", 8.0)
@@ -2062,6 +2073,7 @@ function tick(dt)
 		humanoid.health = config.maxHealth
 	end
 	setHealthInRegistry()
+	delayBeforeNewPos = delayBeforeNewPos - dt
 
 	if getHealingStatusInRegistry() then
 		humanoid.health = math.min(config.maxHealth, humanoid.health + dt * 10)
