@@ -353,6 +353,56 @@ function getBodiesFromRegistry(targetIdentifier)
 	return bodies
 end
 
+function stringToTable(str)
+    local tbl = {}
+    for full_key, value in str:gmatch('([%.%a]+)=(%d+);') do
+        local exploded_key = {}
+        for key_segment in full_key:gmatch('%.(%a+)') do
+            table.insert(exploded_key, key_segment)
+        end
+        local tbl = tbl
+        for i=1, #exploded_key-1 do
+            local key_segment = exploded_key[i]
+            local child = tbl[key_segment]
+            if child == nil then
+                child = {}
+                tbl[key_segment] = child
+            end
+            tbl = child
+        end
+        tbl[exploded_key[#exploded_key]] = value
+    end
+    return tbl
+end
+
+function getPathInRegistry()
+	--[[local str = GetString("level.rts.path.points." .. identifier)
+	--DebugPrint(str)
+	local t = stringToTable(str)
+	for i=1, #t do
+		DebugPrint(i .. "---" t[i][1] .. " " .. t[i][2] .. " " .. t[i][3])
+	end
+	return stringToTable(str)]]
+	local path = {}
+	local len = GetInt("level.rts.path.points." .. identifier .. ".length")
+	for i=1, len do
+		local v = Vec()
+		for j=1, 3 do
+			v[j] = GetFloat("level.rts.path.points." .. identifier .. "." .. i .. "." .. j)
+		end
+		path[#path + 1] = VecCopy(v)
+	end
+	return path
+end
+
+function getPathStateInRegistry()
+	return GetString("level.rts.path.status." .. identifier) or "idle"
+end
+
+function askPathQuery()
+	SetBool("level.rts.path.query." .. identifier, true)
+end
+
 function setStatusInRegistry()
 	SetBool("level.rts.alive." .. identifier, not (humanoid.health <= 0))
 end
@@ -365,14 +415,19 @@ function getTargetTransform()
 	return Transform(pos)
 end
 
-function getAliveStatusInRegistry(identifier)
-	return GetBool("level.rts.alive." .. identifier)
+function getAliveStatusInRegistry(idTarget)
+	return GetBool("level.rts.alive." .. idTarget)
 end
 
 function pathState()
-	local s = GetPathState()
+	--local s = GetPathState()
+	local s = getPathStateInRegistry()
 	--local s = getPathState(selfMd)
 	return s
+end
+
+function abortPathInRegistry()
+	SetBool("level.rts.path.abort." .. identifier, true)
 end
 
 function getTargetPosFromRegistry()
@@ -1202,30 +1257,41 @@ function navigationSetTarget(pos, timeout)
 end
 
 function navigationUpdate(dt)
-	--DebugWatch(identifier, GetPathState())
-	if GetPathState() == "busy" then
-	--if getPathState(selfMd) == "busy" then
+	--DebugWatch(identifier, getPathStateInRegistry())
+	--if GetPathState() == "busy" then
+	if getPathStateInRegistry() == "busy" then
 		navigation.timeSinceProgress = 0
 		navigation.thinkTime = navigation.thinkTime + dt
 		if navigation.timeout == nil then
 			navigation.timeout = 0
 		end
 		if navigation.thinkTime > navigation.timeout then
-			AbortPath()
+			--AbortPath()
+			abortPathInRegistry()
 			--abortPath(selfMd)
 		end
 	end
 
-	--if getPathState(selfMd) ~= "busy" then
-	if GetPathState() ~= "busy" then
+	if getPathStateInRegistry() ~= "busy" then
+	--if GetPathState() ~= "busy" then
 		--DebugWatch(identifier, GetPathState())
-		if GetPathState() == "done" or GetPathState() == "fail" then
-		--if getPathState(selfMd) == "done" or getPathState(selfMd) == "fail" then
+		--if GetPathState() == "done" or GetPathState() == "fail" then
+		if getPathStateInRegistry() == "done" or getPathStateInRegistry() == "fail" then
 			if not navigation.resultRetrieved then
+				--[[
 				if GetPathLength() > 0.5 then
 					local step = 0.5
 					for l=step, GetPathLength(), step do
 						navigation.path[#navigation.path + 1] = GetPathPoint(l)
+					end
+				end
+				]]
+				local path = getPathInRegistry()
+				if #path > 1 then
+					--navigation.path = path
+					navigation.path = {}
+					for i=#path, 1, -1 do
+						navigation.path[#navigation.path + 1] = path[i]
 					end
 				end
 				--navigation.path = deepcopy(getPath(selfMd))
@@ -1238,7 +1304,7 @@ function navigationUpdate(dt)
 		end
 		navigation.thinkTime = 0
 	end
-
+	
 	if navigation.thinkTime == 0 and navigation.hasNewTarget then
 		local startPos
 		
@@ -1259,7 +1325,7 @@ function navigationUpdate(dt)
 		end
 
 		local targetRadius = 1.0
-		if GetPlayerVehicle()~=0 then
+		if GetPlayerVehicle() ~= 0 then
 			targetRadius = 4.0
 		end
 	
@@ -1271,8 +1337,12 @@ function navigationUpdate(dt)
 
 		QueryRequire("physical large")
 		rejectAllBodies(humanoid.allBodies)
-		QueryPath(startPos, target, 100, targetRadius, navigation.pathType)
-		--DebugPrint(identifier)
+		--QueryPath(startPos, target, 100, targetRadius, navigation.pathType)
+		--DebugWatch("nav", getNavigationPosFromRegistry())
+		--DebugWatch("tgt", target)
+		--DebugCross(target)
+		askPathQuery()
+		--DebugPrint(get)
 		--queryPath(selfMd, startPos, target)
 
 		navigation.timeSinceProgress = 0
@@ -1283,10 +1353,10 @@ function navigationUpdate(dt)
 	
 	navigationMove(dt)
 	
-	--if getPathState(selfMd) ~= "busy" and #navigation.path == 0 and not navigation.hasNewTarget then
-	if GetPathState() ~= "busy" and #navigation.path == 0 and not navigation.hasNewTarget then
-		--if getPathState(selfMd) == "done" or getPathState(selfMd) == "idle" then
-		if GetPathState() == "done" or GetPathState() == "idle" then
+	if getPathStateInRegistry() ~= "busy" and #navigation.path == 0 and not navigation.hasNewTarget then
+	--if GetPathState() ~= "busy" and #navigation.path == 0 and not navigation.hasNewTarget then
+		if getPathStateInRegistry() == "done" or getPathStateInRegistry() == "idle" then
+		--if GetPathState() == "done" or GetPathState() == "idle" then
 			navigation.state = "done"
 		else
 			navigation.state = "fail"
@@ -1304,6 +1374,7 @@ function navigationMove(dt)
 			if navigation.timeSinceProgress > 5.0 then
 				navigation.hasNewTarget = true
 				navigation.path = {}
+				DebugPrint("reset")
 			end
 		end
 		if navigation.unblock > 0 then
@@ -1315,7 +1386,8 @@ function navigationMove(dt)
 			local distToFirstPathPoint = VecLength(dv)
 			dv[2] = 0
 			local d = VecLength(dv)
-			if distToFirstPathPoint < 2.5 then
+
+			if distToFirstPathPoint < 3.5 then--2.5 then
 				if d < PATH_NODE_TOLERANCE then
 					if #navigation.path > 1 then
 						--Measure verticality which should decrease speed
@@ -1487,7 +1559,7 @@ end
 
 function debugState()
 	local state = stackTop()
-	DebugWatch("state", state.id)
+	--[[DebugWatch("state", state.id)
 	DebugWatch("activeTime", state.activeTime)
 	DebugWatch("totalTime", state.totalTime)
 	DebugWatch("navigation.state", navigation.state)
@@ -1498,8 +1570,8 @@ function debugState()
 	DebugWatch("navigation.blocked", navigation.blocked)
 	DebugWatch("navigation.unblock", navigation.unblock)
 	DebugWatch("navigation.unblockTimer", navigation.unblockTimer)
-	DebugWatch("navigation.thinkTime", navigation.thinkTime)
-	DebugWatch("GetPathState()", GetPathState())
+	DebugWatch("navigation.thinkTime", navigation.thinkTime)]]
+	DebugWatch("GetPathState()" .. identifier, getPathStateInRegistry())
 end
 
 function init()
@@ -2056,6 +2128,17 @@ function tick(dt)
 	end
 
 	--debugState()
+	--for i=1, #navigation.path - 1 do
+		--DrawLine(navigation.path[i], navigation.path[i + 1])
+	--end
+	for i=1, #navigation.path - 1 do
+		local dashStyle = true
+		if dashStyle and (i % 2 == 0) then
+
+		else
+			DrawLine(navigation.path[i], navigation.path[i + 1], 0, 1, 1, 0.7)
+		end
+	end
 end
 
 

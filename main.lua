@@ -2,7 +2,7 @@
 --Modding documentation: http://teardowngame.com/modding
 --API reference: http://teardowngame.com/modding/api.html
 
---#include "script/main_road_detection.lua"
+#include "script/main_road_detection.lua"
 #include script/RTSInterface.lua
 
 --[[
@@ -94,38 +94,57 @@ function init()
 	health[DOC] = 100
 
 
-	--[[md = nil--makeMappingData(Vec(-100, -100, -100), Vec(100, 100, 100))
+	md = nil--makeMappingData(Vec(-100, -100, -100), Vec(100, 100, 100))
 	firstPassage = true
 	world = {}
 	world.aa, world.bb = GetBodyBounds(GetWorldBody())
 	world.aa = floorVec(world.aa)
 	world.bb = floorVec(world.bb)
-	firstQuery = true]]
+	firstQuery = true
+	queryQueue = {}
 end
 
 
 function tick(dt)
 	
-	--[[if firstPassage then
+	if firstPassage then
 		firstPassage = false
 		local worldAA, worldBB = GetBodyBounds(GetWorldBody())
 		md = makeMappingData(worldAA, worldBB)
+		md.step = 2
 	end
 	processDebugCross(md)
 	processUpdate(md)
 	
-	if md.status > 3 and firstQuery == true then
+	if md.status > 3 then
 		--exportToRegistry(md, false)
 		--importFromRegistry()
 		firstQuery = false
-		queryPath(md, Vec(0, 0, 0), Vec(0, 0, 50))
+		--queryPath(md, Vec(0, 0, 0), Vec(0, 0, 50))
+		if #queryQueue > 0 then
+			queryQueue[1].status = getPathState(md)
+			setPathStatusInRegistry(queryQueue[1].identifier, queryQueue[1].status)
+			if queryQueue[1].status == "idle" then
+				--DebugPrint("new " .. tableToString(queryQueue))
+				queryPath(md, queryQueue[1].start, queryQueue[1].target)
+				queryQueue[1].status = getPathState(md)
+			elseif queryQueue[1].status == "fail" or queryQueue[1].status == "done" then
+				local newQueue = {}
+				if queryQueue[1].status == "done" then
+					local path = getSmoothPath(md) --getPath(md)
+					lastPath = deepcopy(path)
+					setPathInRegistry(queryQueue[1].identifier, path)
+				end
+				abortPath(md)
+				
+				for i=2, #queryQueue do
+					newQueue[#newQueue + 1] = queryQueue[i]
+				end
+				queryQueue = newQueue
+			end
+		end
+		--edgesDebugLine(true, md)
 	end
-	
-	-- to print the path
-	local path = getPath(md)
-	for i=1, #path - 1 do
-		DrawLine(path[i], path[i + 1])
-	end]]
 
 	if nexus.alive then
 		updateNexus(dt)
@@ -336,6 +355,22 @@ end
 
 ---------------------------------
 
+function setPathStatusInRegistry(identifier, status)
+	SetString("level.rts.path.status." .. identifier, status)
+end
+
+function setPathInRegistry(identifier, path)
+	--DebugPrint("len " .. #path)
+	--SetString("level.rts.path.points." .. identifier, tableToString(path))
+	--ClearKey("level.rts.path.points." .. identifier)
+	SetInt("level.rts.path.points." .. identifier .. ".length", #path)
+	for i=1, #path do
+		for j=1, 3 do
+			SetFloat("level.rts.path.points." .. identifier .. "." .. i .. "." .. j, path[i][j])
+		end
+	end
+end
+
 function spawnNexus(t)
 	SetString("game.player.tool", toolname)
 	local entities = Spawn("vox/nexus.xml", t)
@@ -443,7 +478,7 @@ function updateNexus(dt)
 	if nexus.wave == 0 then
 		nexus.spawnInitTime = nexus.spawnInitTime + dt
 		makeSpawn()
-		DrawLine(nexus.tentative, getNexusTransform().pos)
+		--DrawLine(nexus.tentative, getNexusTransform().pos)
 		return
 	end
 	
@@ -582,9 +617,9 @@ function select()
 			if identifier == tostring(tool.selected[j].id) then
 				if getAliveStatusInRegistry(tool.selected[j].id) then
 					DrawBodyHighlight(allBodies[i], 1)
-					if VecLength(VecSub(tool.selected[j].t.pos, getNavigationPosFromRegistry(tool.selected[j].id))) > 1.5 then
-						DrawLine(tool.selected[j].t.pos, getNavigationPosFromRegistry(tool.selected[j].id), 0.2, 0.7, 0.2, 0.2)
-					end
+					--if VecLength(VecSub(tool.selected[j].t.pos, getNavigationPosFromRegistry(tool.selected[j].id))) > 1.5 then
+						--DrawLine(tool.selected[j].t.pos, getNavigationPosFromRegistry(tool.selected[j].id), 0.2, 0.7, 0.2, 0.2)
+					--end
 					local targetId = getTargetId(tool.selected[j].id)
 					--DebugPrint(">" .. targetId .. type(targetId))
 					if targetId ~= 0 then
@@ -862,33 +897,95 @@ function getDocs()
 	return docs
 end
 
+function getPathQueryInRegistry(identifier)
+	return GetBool("level.rts.path.query." .. identifier)
+end
+
+function setPathQueryInRegistry(identifier, value)
+	SetBool("level.rts.path.query." .. identifier, value)
+end
+
+function getAbortPathInRegistry(identifier)
+	local value = GetBool("level.rts.path.abort." .. identifier)
+	SetBool("level.rts.path.abort." .. identifier, false)
+	return value
+end
+
 function setAllTarget()
 
 	local docs = getDocs()
 
 	for i=1, #soldiers do
-		if getAliveStatusInRegistry(soldiers[i].id) and not getAliveStatusInRegistry(getTargetId(i)) then
-			local target
-			if soldiers[i].team == ALLY_TEAM or not nexus.alive then
-				target = getClosestTargetIdentifier(soldiers[i])
-			else
-				target = getClosestTargetIdentifierIncludingNexus(soldiers[i])
-			end
-			if target ~= nil then
-				setTargetIdInRegistry(target, i)
-			end
-			local healing = false
-			for j=1, #docs do
-				if soldiers[i].team == docs[j].team and VecLength(VecSub(soldiers[i].t.pos, docs[j].t.pos)) < 12 then
-					healing = true
-					DrawLine(soldiers[i].t.pos, docs[j].t.pos, 1, 0.6, 0.6, 0.5)
-					break
+		if getAliveStatusInRegistry(soldiers[i].id) then
+			if not getAliveStatusInRegistry(getTargetId(i)) then
+				local target
+				if soldiers[i].team == ALLY_TEAM or not nexus.alive then
+					target = getClosestTargetIdentifier(soldiers[i])
+				else
+					target = getClosestTargetIdentifierIncludingNexus(soldiers[i])
 				end
+				if target ~= nil then
+					setTargetIdInRegistry(target, i)
+				end
+				local healing = false
+				for j=1, #docs do
+					if soldiers[i].team == docs[j].team and VecLength(VecSub(soldiers[i].t.pos, docs[j].t.pos)) < 12 then
+						healing = true
+						DrawLine(soldiers[i].t.pos, docs[j].t.pos, 1, 0.6, 0.6, 0.5)
+						break
+					end
+				end
+				setHealingStatusInRegistry(i, healing)
 			end
-			setHealingStatusInRegistry(i, healing)
-		end
-		if getTargetId(i) ~= 0 or soldiers[i].team == ENEMY_TEAM then
-			setTargetPosInRegistry(getTargetId(i), i)
+			if getTargetId(i) ~= 0 or soldiers[i].team == ENEMY_TEAM then
+				setTargetPosInRegistry(getTargetId(i), i)
+			end
+			if getPathQueryInRegistry(i) then
+				--DebugCross(getNavigationPosFromRegistry(i), 0, 1, 0)
+				setPathQueryInRegistry(i, false)
+				local exist = false
+				for j=1, #queryQueue do
+					if queryQueue[j].identifier == i then
+						exist = true
+						break
+					end
+				end
+				if exist then
+					local newQueue = {}
+					for i=1, #queryQueue do
+						if i == 1 then
+							queryQueue[1].status = "fail"
+							break
+						else
+							if queryQueue[i].identifier ~= i then
+								newQueue[#newQueue + 1] = deepcopy(queryQueue[i])
+							end
+						end
+					end
+					queryQueue = newQueue
+				end
+				queryQueue[#queryQueue + 1] = {
+					identifier = i,
+					status = "idle",
+					start = soldiers[i].t.pos,
+					target = getNavigationPosFromRegistry(i)
+				}
+				--DebugPrint(tableToString(queryQueue))
+			end
+			if getAbortPathInRegistry(i) then
+				local newQueue = {}
+				for i=1, #queryQueue do
+					if i == 1 then
+						queryQueue[1].status = "fail"
+						break
+					else
+						if queryQueue[i].identifier ~= i then
+							newQueue[#newQueue + 1] = deepcopy(queryQueue[i])
+						end
+					end
+				end
+				queryQueue = newQueue
+			end
 		end
 	end
 end

@@ -563,6 +563,21 @@ function handlePathQuery(md)
 	end
 end
 
+function getSmoothPath(md)
+	local path = getPath(md)
+	local smooth = {}
+	smooth[1] = path[1]
+	for i=2, #path - 1 do
+		if (i % 2 ~= 0) then
+			smooth[i] = path[i]
+		else
+			smooth[i] = VecLerp(path[i - 1], path[i + 1], 0.5)
+		end
+	end
+	smooth[#path] = path[#path]
+	return smooth
+end
+
 function getPath(md)
 	local path = {}
 	for i=1, #md.pf.path do
