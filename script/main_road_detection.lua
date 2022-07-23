@@ -449,6 +449,7 @@ function makeMappingData(minBound, maxBound)
 			a = nil,
 			b = nil,
 			dijkstra = false,
+			avoidWalls = true,
 			statusPath = "idle",
 			status = 1,
 			start = false
@@ -540,6 +541,7 @@ function queryPath(md, a, b)
 	md.pf.a = deepcopy(a)
 	md.pf.b = deepcopy(b)
 	md.pf.start = true
+	md.pf.statusPath = "busy"
 end
 
 function handlePathQuery(md)
@@ -1120,6 +1122,8 @@ function getNextIndexInQueue(md)
 		local dist = 0
 		if pf.dijkstra then
 			dist = points[pf.queue[i]].pf.dist.a
+		elseif pf.avoidWalls then
+			dist = points[pf.queue[i]].pf.dist.a - math.pow(#points[pf.queue[i]].neighbors, 2)
 		else
 			dist = points[pf.queue[i]].pf.dist.b
 		end

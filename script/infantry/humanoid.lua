@@ -56,10 +56,10 @@ config.huntPlayer = false
 config.huntSpeedScale = 1.6
 config.avoidPlayer = false
 config.triggerAlarmWhenSeen = false
-config.visibilityTimer = 0.3 --Time player must be seen to be identified as enemy (ideal condition)
+config.visibilityTimer = 0.1 --0.3 --Time player must be seen to be identified as enemy (ideal condition)
 config.lostVisibilityTimer = 5.0 --Time player is seen after losing visibility
 config.outline = 13
-config.aimTime = 5.0
+config.aimTime = 3.0 --5.0
 config.maxSoundDist = 100.0
 config.aggressive = false
 config.stepSound = "m"
@@ -68,7 +68,7 @@ config.maxHealth = 100.0
 
 firstLoop = true
 
-PATH_NODE_TOLERANCE = 0.8
+PATH_NODE_TOLERANCE = 1.5--0.8
 
 function configInit()
 	local eye = FindLight("eye")
@@ -1187,6 +1187,7 @@ navigation.state = "done"
 navigation.path = {}
 navigation.target = Vec()
 navigation.hasNewTarget = false
+navigation.hadNewTarget = false
 navigation.resultRetrieved = true
 navigation.deviation = 0		-- Distance to path
 navigation.blocked = 0
@@ -1227,9 +1228,11 @@ function navigationPrunePath()
 	end
 end
 
-function navigationClear()
+function navigationClear(callFrom)
+	callFrom = callFrom or ""
 	--AbortPath()
 	abortPathInRegistry()
+	DebugWatch(identifier, "abort " .. callFrom)
 	--abortPath(selfMd)
 	navigation.state = "done"
 	navigation.path = {}
@@ -1252,7 +1255,7 @@ end
 
 function navigationSetTarget(pos, timeout)
 	pos = truncateToGround(pos)
-	if VecDist(navigation.target, pos) > 3.5 then--2.0 then
+	if VecDist(navigation.target, pos) > 2.0 then
 		--delayBeforeNewPos = 5
 		--DebugPrint(identifier .. " old " .. vecToStr(navigation.target))
 		--DebugPrint(identifier .. " new " .. vecToStr(pos))
@@ -1357,6 +1360,7 @@ function navigationUpdate(dt)
 
 		navigation.timeSinceProgress = 0
 		navigation.hasNewTarget = false
+		navigation.hadNewTarget = true
 		navigation.resultRetrieved = false
 		navigation.state = "move"
 	end
@@ -1393,13 +1397,35 @@ function navigationMove(dt)
 		else
 			local target = navigation.path[1]
 			local dv = VecSub(target, humanoid.navigationCenter)
+
+			-- added
+			local minDistToPath = nil
+			for i=1, #navigation.path do
+				local distance = VecLength(VecSub(navigation.path[i], humanoid.navigationCenter))
+				if minDistToPath == nil or minDistToPath.dist > distance then
+					minDistToPath = {
+						index = i,
+						dist = distance
+					}
+				end
+			end
+			if minDistToPath ~= nil then
+				local newPath = {}
+				for i=minDistToPath.index, #navigation.path do
+					newPath[#newPath + 1] = navigation.path[i]
+				end
+				navigation.path = newPath
+			end
+			-- end add
+
 			local distToFirstPathPoint = VecLength(dv)
 			dv[2] = 0
 			local d = VecLength(dv)
 
 			--DebugPrint(identifier .. " - " .. distToFirstPathPoint)
-			if distToFirstPathPoint < 4.5 then--2.5 then
+			if distToFirstPathPoint < 30 or navigation.hadNewTarget then--2.5 then
 				if d < PATH_NODE_TOLERANCE then
+					navigation.hadNewTarget = false
 					if #navigation.path > 1 then
 						--Measure verticality which should decrease speed
 						local diff = VecSub(navigation.path[2], navigation.path[1])
@@ -1407,7 +1433,7 @@ function navigationMove(dt)
 						--Remove the first one
 						local newPath = {}
 						for i=2, #navigation.path do
-							newPath[#newPath+1] = navigation.path[i]
+							newPath[#newPath + 1] = navigation.path[i]
 						end
 						navigation.path = newPath
 						navigation.timeSinceProgress = 0
@@ -1432,6 +1458,7 @@ function navigationMove(dt)
 				navigation.hasNewTarget = true
 				navigation.path = {}
 			end
+			--DebugWatch(identifier, #navigation.path)
 
 			--Check if stuck
 			if humanoid.blocked > 0.2 then
@@ -1854,7 +1881,7 @@ function update(dt)
 	--DebugWatch(identifier, getNavigationPosFromRegistry())
 	if state.id == "hunt" then
 		if not state.init then
-			navigationClear()
+			--navigationClear("hunt1")
 			state.init = true
 			state.headAngle = 0
 			state.headAngleTimer = 0
@@ -1863,7 +1890,7 @@ function update(dt)
 			humanoid.dir = VecCopy(humanoid.dirToPlayer)
 			head.dir = VecCopy(humanoid.dirToPlayer)
 			humanoid.speed = 0
-			navigationClear()
+			navigationClear("hunt2")
 		else
 			--navigationSetTarget(head.lastSeenPos, 1.0 + clamp(head.timeSinceLastSeen, 0.0, 4.0))
 			
@@ -1927,7 +1954,7 @@ function update(dt)
 	--Avoid player
 	if state.id == "avoid" then
 		if not state.init then
-			navigationClear()
+			navigationClear("avoid")
 			state.init = true
 			state.headAngle = 0
 			state.headAngleTimer = 0
@@ -1980,7 +2007,7 @@ function update(dt)
 	if state.id == "navigate" then
 		if not state.initialized then
 			if not state.timeout then state.timeout = 30 end
-			navigationClear()
+			navigationClear("nav")
 			--navigationSetTarget(state.pos, state.timeout)
 			navigationSetTarget(getNavigationPosFromRegistry(), state.timeout)
 			state.initialized = true

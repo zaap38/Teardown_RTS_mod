@@ -102,6 +102,7 @@ function init()
 	world.bb = floorVec(world.bb)
 	firstQuery = true
 	queryQueue = {}
+	countQuery = 0
 end
 
 
@@ -111,10 +112,11 @@ function tick(dt)
 		firstPassage = false
 		local worldAA, worldBB = GetBodyBounds(GetWorldBody())
 		md = makeMappingData(worldAA, worldBB)
-		md.step = 2
+		md.step = 3
 	end
 	processDebugCross(md)
 	processUpdate(md)
+	DebugWatch("countQuery", countQuery)
 	
 	if md.status > 3 then
 		--exportToRegistry(md, false)
@@ -123,12 +125,14 @@ function tick(dt)
 		--queryPath(md, Vec(0, 0, 0), Vec(0, 0, 50))
 		if #queryQueue > 0 then
 			queryQueue[1].status = getPathState(md)
-			for i=1, #queryQueue[1].askers do
-				setPathStatusInRegistry(queryQueue[1].askers[i], queryQueue[1].status)
-			end
+			local status = queryQueue[1].status
+			local askers = queryQueue[1].askers
+			--DebugPrint(queryQueue[1].status)
 			if queryQueue[1].status == "idle" then
 				--DebugPrint("new " .. tableToString(queryQueue))
 				queryPath(md, queryQueue[1].start, queryQueue[1].target)
+				--DebugPrint("start")
+				countQuery = countQuery + 1
 				queryQueue[1].status = getPathState(md)
 			elseif queryQueue[1].status == "fail" or queryQueue[1].status == "done" then
 				local newQueue = {}
@@ -138,18 +142,22 @@ function tick(dt)
 					for i=1, #queryQueue[1].askers do
 						setPathInRegistry(queryQueue[1].askers[i], path)
 					end
-					--local str = ""
-					--for i=1, #queryQueue[1].askers do
-						--str = str .. ", " .. queryQueue[1].askers[i]
-					--end
-					--DebugPrint(str)
+					local str = ""
+					for i=1, #queryQueue[1].askers do
+						str = str .. queryQueue[1].askers[i] .. ", "
+					end
+					DebugPrint("Askers: " .. str)
 				end
+				--DebugPrint("end")
 				abortPath(md)
 				
 				for i=2, #queryQueue do
 					newQueue[#newQueue + 1] = queryQueue[i]
 				end
 				queryQueue = newQueue
+			end
+			for i=1, #askers do
+				setPathStatusInRegistry(askers[i], status)
 			end
 		end
 		--edgesDebugLine(true, md)
@@ -444,7 +452,7 @@ function makeSpawn()
 		return
 	end
 
-	local state = GetPathState()
+	local state = getPathState(md)--GetPathState()
 	if oldCount ~= #nexus.spawns then
 		state = "idle"
 	end
@@ -469,7 +477,7 @@ function makeSpawn()
 			end
 
 			if not IsPointInWater(hitPos) and minDist >= 20 then
-				QueryPath(hitPos, pos, 200)
+				queryPath(md, hitPos, pos)--QueryPath(hitPos, pos, 200)
 				nexus.spawnInitTime = 0
 			end
 		end
