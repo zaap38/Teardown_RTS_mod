@@ -66,7 +66,24 @@ function init()
 		spawns = {},
 		spawnCount = 0,
 		tentative = Vec(),
-		spawnInitTime = 0
+		spawnInitTime = 0,
+		fuel = {
+			value = 0,
+			max = 300,
+			lose = {
+				base = 5,
+				perUnit = 2.5
+			}
+		},
+		supplies = {
+			array = {},
+			identifier = 0,
+			cooldown = {
+				value = 0,
+				default = 5
+			},
+			fuel = 150
+		}
 	}
 	oldCount = #nexus.spawns
 
@@ -116,40 +133,28 @@ function tick(dt)
 	end
 	processDebugCross(md)
 	processUpdate(md)
-	DebugWatch("countQuery", countQuery)
+	--DebugWatch("countQuery", countQuery)
 	
 	if md.status > 3 then
-		--exportToRegistry(md, false)
-		--importFromRegistry()
-		firstQuery = false
-		--queryPath(md, Vec(0, 0, 0), Vec(0, 0, 50))
 		if #queryQueue > 0 then
 			queryQueue[1].status = getPathState(md)
 			local status = queryQueue[1].status
 			local askers = queryQueue[1].askers
-			--DebugPrint(queryQueue[1].status)
 			if queryQueue[1].status == "idle" then
-				--DebugPrint("new " .. tableToString(queryQueue))
 				queryPath(md, queryQueue[1].start, queryQueue[1].target)
-				--DebugPrint("start")
 				countQuery = countQuery + 1
 				queryQueue[1].status = getPathState(md)
 			elseif queryQueue[1].status == "fail" or queryQueue[1].status == "done" then
 				local newQueue = {}
 				if queryQueue[1].status == "done" then
-					local path = getSmoothPath(md) --getPath(md)
-					--lastPath = deepcopy(path)
+					local path = getSmoothPath(md)
 					for i=1, #queryQueue[1].askers do
 						setPathInRegistry(queryQueue[1].askers[i], path)
 					end
-					local str = ""
 					for i=1, #queryQueue[1].askers do
-						str = str .. queryQueue[1].askers[i] .. ", "
 						setUpdatedStatusInRegistry(queryQueue[1].askers[i], true)
 					end
-					--DebugPrint("Askers: " .. str)
 				end
-				--DebugPrint("end")
 				abortPath(md)
 				
 				for i=2, #queryQueue do
@@ -159,7 +164,6 @@ function tick(dt)
 			end
 			for i=1, #askers do
 				setPathStatusInRegistry(askers[i], status)
-				--DebugPrint("main")
 			end
 		end
 		--edgesDebugLine(true, md)
@@ -170,6 +174,21 @@ function tick(dt)
 		if nexus.cooldown.value <= 0 and nexus.maxEnemiesCount > nexus.enemiesCount and nexus.wave >= 0 then
 			spawnEnemieFromNexus()
 			nexus.cooldown.value = nexus.cooldown.default
+		end
+		nexus.supplies.cooldown.value = nexus.supplies.cooldown.value - dt
+		if nexus.supplies.cooldown.value <= 0 then
+			nexus.supplies.cooldown.value = nexus.supplies.cooldown.default
+			while not spawnSupply() do
+
+			end
+		end
+	end
+
+	for j=1, #nexus.supplies.array do
+		if nexus.supplies.array[j].alive then
+			for k=1, #nexus.supplies.array[j].bodies do
+				DrawBodyOutline(nexus.supplies.array[j].bodies[k], 1, 1, 0, 1)
+			end
 		end
 	end
 
@@ -409,7 +428,7 @@ end
 function initNexus()
 	nexus.integrity.initial = getNexusVoxCount()
 	nexus.integrity.current = nexus.integrity.initial
-	nexus.wave = 0 --1
+	nexus.wave = 0
 	nexus.alive = true
 	nexus.enemies = {}
 	nexus.money = 800
@@ -417,8 +436,8 @@ function initNexus()
 	nexus.cooldown.value = nexus.cooldown.default
 	nexus.waveCooldown.value = nexus.waveCooldown.default
 	nexus.maxEnemiesCount = 8
+	nexus.fuel.value = nexus.fuel.max
 	nexus.roundRobin = {}
-	--nexus.roundRobin[#nexus.roundRobin + 1] = INFANTRY
 	nexus.roundRobin[#nexus.roundRobin + 1] = INFANTRY
 	nexus.roundRobin[#nexus.roundRobin + 1] = HEAVY_INFANTRY
 	nexus.roundRobin[#nexus.roundRobin + 1] = SNIPER
@@ -452,13 +471,23 @@ function getNexusTransform()
 	return TransformCopy(GetBodyTransform(nexus.bodies[1]))
 end
 
+function getAllies()
+	local allies = {}
+	for i=1, #soldiers do
+		if getAliveStatusInRegistry(soldiers[i].id) and soldiers[i].team == ALLY_TEAM then
+			allies[#allies + 1] = soldiers[i]
+		end
+	end
+	return allies
+end
+
 function makeSpawn()
 	if #nexus.spawns >= nexus.spawnCount then
 		nexus.wave = 1
 		return
 	end
 
-	local state = getPathState(md)--GetPathState()
+	local state = getPathState(md)
 	if oldCount ~= #nexus.spawns then
 		state = "idle"
 	end
@@ -483,7 +512,7 @@ function makeSpawn()
 			end
 
 			if not IsPointInWater(hitPos) and minDist >= 20 then
-				queryPath(md, hitPos, pos)--QueryPath(hitPos, pos, 200)
+				queryPath(md, hitPos, pos)
 				nexus.spawnInitTime = 0
 			end
 		end
@@ -501,10 +530,15 @@ function updateNexus(dt)
 	if nexus.wave == 0 then
 		nexus.spawnInitTime = nexus.spawnInitTime + dt
 		makeSpawn()
-		--DrawLine(nexus.tentative, getNexusTransform().pos)
 		return
 	end
 	
+	nexus.fuel.value = nexus.fuel.value - (nexus.fuel.lose.base + nexus.fuel.lose.perUnit * #getAllies()) * dt
+	DebugWatch("fuel", nexus.fuel.value)
+	if nexus.fuel.value <= 0 then
+		nexus.alive = false
+	end
+
 	local value = nexus.moneyPerSecond * dt
 	nexus.money = nexus.money + value
 	nexus.integrity.current = getNexusVoxCount()
@@ -561,6 +595,42 @@ function spawnEnemieFromNexus()
 
 	offset = makeOffset(getNexusTransform().pos, 5)
 	setNavigationPosInRegistry(offset, soldier.id)
+end
+
+function spawnSupply()
+	local offset = makeOffset(getNexusTransform().pos, 70, true)
+
+	local hit, dist, normal, shape = QueryRaycast(offset, Vec(0, -1, 0), 200)
+	if hit then
+		offset = VecAdd(offset, VecScale(Vec(0, -1, 0), dist - 0.5))
+		if IsPointInWater(offset) then
+			return false
+		end
+	else
+		return false
+	end
+	
+	local entities = Spawn("vox/supply.xml", Transform(offset))
+
+	nexus.supplies.identifier = nexus.supplies.identifier + 1
+
+	local bodies = {}
+
+	for i=1, #entities do
+		if GetEntityType(entities[i]) == "body" then
+			--SetTag(entities[i], "identifier_supply", nexus.supplies.identifier)
+			bodies[#bodies + 1] = entities[i]
+		end
+	end
+
+	nexus.supplies.array[#nexus.supplies.array + 1] = {
+		pos = offset,
+		alive = true,
+		bodies = bodies,
+		id = nexus.supplies.identifier
+	}
+
+	return true
 end
 
 function setStrategicView()
@@ -645,7 +715,7 @@ function select()
 					--end
 					local targetId = getTargetId(tool.selected[j].id)
 					--DebugPrint(">" .. targetId .. type(targetId))
-					if targetId ~= 0 then
+					if targetId > 0 then--targetId ~= 0 then
 						DrawLine(tool.selected[j].t.pos, soldiers[targetId].t.pos, 0.7, 0.2, 0.2, 0.2)
 					end
 
@@ -692,8 +762,6 @@ function command()
 		for i=1, #tool.selected do
 			if tool.selected[i].team == ALLY_TEAM then
 				if targetId == nil then
-					--local offset = makeOffset(hitPos, math.min(((#tool.selected - 1) * 1.7), 10), true)
-					--setNavigationPosInRegistry(offset, tool.selected[i].id)
 					setNavigationPosInRegistry(hitPos, tool.selected[i].id)
 				end
 				if targetId ~= nil then
@@ -826,6 +894,9 @@ function makeSoldier(team, t, typeSoldier)
 	soldiers[#soldiers + 1] = soldier
 	setBodiesInRegistry(soldier.id)
 	setTypeInRegistry(soldier.id)
+
+	setTargetIdInRegistry(0, soldier.id)
+
 	return soldier
 end
 
@@ -842,8 +913,10 @@ end
 function setTargetPosInRegistry(identifierTarget, identifier)
 
 	local pos
-	if identifierTarget == 0 then -- targeting nexus
+	if identifierTarget == -1 then -- targeting nexus
 		pos = getNexusTransform().pos
+	elseif identifierTarget == 0 then
+		pos = Vec(0, -100, 0)
 	else
 		pos = soldiers[identifierTarget].t.pos
 	end
@@ -891,13 +964,13 @@ end
 
 function getClosestTargetIdentifierIncludingNexus(soldier)
 	local best = {
-		id = nil,
+		id = 0,
 		dist = 0
 	}
 	best.id, best.dist = getClosestTargetIdentifier(soldier)
 	local distToNexus = VecLength(VecSub(getNexusTransform().pos, soldier.t.pos))
 	if best.id == nil or distToNexus <= best.dist then
-		best.id = nil
+		best.id = -1
 		best.dist = distToNexus
 	end
 	return best.id, best.dist
@@ -944,6 +1017,13 @@ function isInTable(t, v)
 	return false
 end
 
+function getSupply(identifier)
+	nexus.fuel.value = math.min(nexus.fuel.value + nexus.supplies.fuel, nexus.fuel.max)
+	for i=1, #nexus.supplies.array[identifier].bodies do
+		Delete(nexus.supplies.array[identifier].bodies[i])
+	end
+end
+
 function setAllTarget()
 
 	local docs = getDocs()
@@ -951,7 +1031,9 @@ function setAllTarget()
 
 	for i=1, #soldiers do
 		if getAliveStatusInRegistry(soldiers[i].id) then
-			if not getAliveStatusInRegistry(getTargetId(i)) then
+			local targetId = getTargetId(i)
+
+			if targetId == -1 or not getAliveStatusInRegistry(targetId) then
 				local target
 				if soldiers[i].team == ALLY_TEAM or not nexus.alive then
 					target = getClosestTargetIdentifier(soldiers[i])
@@ -971,11 +1053,10 @@ function setAllTarget()
 				end
 				setHealingStatusInRegistry(i, healing)
 			end
-			--if getTargetId(i) ~= 0 or soldiers[i].team == ENEMY_TEAM then
-				setTargetPosInRegistry(getTargetId(i), i)
-			--end
+
+			setTargetPosInRegistry(getTargetId(i), i)
+
 			if getPathQueryInRegistry(i) then
-				--DebugCross(getNavigationPosFromRegistry(i), 0, 1, 0)
 				setPathQueryInRegistry(i, false)
 
 				if pathQuery == nil then
@@ -991,22 +1072,20 @@ function setAllTarget()
 					pathQuery.askers[#pathQuery.askers + 1] = i
 				end
 			end
-			--[[if getAbortPathInRegistry(i) then
-				local newQueue = {}
-				for i=1, #queryQueue do
-					if i == 1 then
-						queryQueue[1].status = "fail"
-						break
-					else
-						if queryQueue[i].identifier ~= i then
-							newQueue[#newQueue + 1] = deepcopy(queryQueue[i])
+
+			if soldiers[i].team == ALLY_TEAM then
+				for j=1, #nexus.supplies.array do
+					if nexus.supplies.array[j].alive then
+						if VecLength(VecSub(soldiers[i].t.pos, nexus.supplies.array[j].pos)) <= 4 then
+							nexus.supplies.array[j].alive = false
+							getSupply(nexus.supplies.array[j].id)
 						end
 					end
 				end
-				queryQueue = newQueue
-			end]]
+			end
 		end
 	end
+
 	if pathQuery ~= nil then
 		if #pathQuery.askers > 0 then
 			queryQueue[#queryQueue + 1] = pathQuery

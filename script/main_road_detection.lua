@@ -1093,7 +1093,9 @@ function getClosestNodeIndex(inputVec, md)
 		index = nil,
 		dist = 0
 	}
-
+	if indexStageList == nil then
+		return bmu.index
+	end
 	for stage=1, #indexStageList do
 		if indexStageList[stage] ~= nil then
 			local dist = VecLength(VecSub(points[indexStageList[stage]].pos, p))
@@ -1153,12 +1155,19 @@ function addNeighboursToQueue(md)
 	local indexList = md.indexList
 
 	for i=1, #points[pf.current].neighbors do
-		local index = indexList[points[pf.current].neighbors[i].x][points[pf.current].neighbors[i].z][points[pf.current].neighbors[i].stage]
-		if points[pf.current].neighbors[i].edge then
-			if points[index].pf.color == 0 then
-				addInQueue(index, pf.current, md)
-			elseif points[index].pf.color == 1 and points[pf.current].pf.dist.a < points[points[index].pf.previous].pf.dist.a then
-				points[index].pf.previous = pf.current
+		if points[pf.current].neighbors[i].x ~= nil and
+				indexList[points[pf.current].neighbors[i].x] ~= nil and
+				points[pf.current].neighbors[i].z~= nil and
+				indexList[points[pf.current].neighbors[i].x][points[pf.current].neighbors[i].z] ~= nil and
+				points[pf.current].neighbors[i].stage ~= nil and
+				indexList[points[pf.current].neighbors[i].x][points[pf.current].neighbors[i].z][points[pf.current].neighbors[i].stage] ~= nil then
+			local index = indexList[points[pf.current].neighbors[i].x][points[pf.current].neighbors[i].z][points[pf.current].neighbors[i].stage]
+			if points[pf.current].neighbors[i].edge then
+				if points[index].pf.color == 0 then
+					addInQueue(index, pf.current, md)
+				elseif points[index].pf.color == 1 and points[pf.current].pf.dist.a < points[points[index].pf.previous].pf.dist.a then
+					points[index].pf.previous = pf.current
+				end
 			end
 		end
 	end
