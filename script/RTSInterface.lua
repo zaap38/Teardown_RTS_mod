@@ -2,10 +2,11 @@
 
 function RTSDrawMenu()
     local stats = {
-        integrity = AutoRound(AutoKeyDefaultFloat('level.rts.stats.integrity', 0), 1),
+        integrity = AutoKeyDefaultFloat('level.rts.stats.integrity', 0),
         money = AutoRound(AutoKeyDefaultFloat('level.rts.stats.money', 0), 1),
         wave = AutoKeyDefaultInt('level.rts.stats.wave', 0),
         waveCooldown = AutoRound(AutoKeyDefaultFloat('level.rts.stats.waveCooldown', 0), 0.1),
+        fuel = AutoKeyDefaultFloat('level.rts.stats.fuel', 0)
     }
 
     -- AutoSecondaryColor = {0, 0, 0, 0.25}
@@ -15,14 +16,30 @@ function RTSDrawMenu()
     UiPush()
         UiTranslate(AutoPad.heavy, AutoPad.heavy)
 
-        AutoContainer(320, 100)
+        AutoContainer(320, 120)
         AutoSpreadDown(AutoPad.thin)
-            AutoText("NEXUS INTEGRITY : " .. stats.integrity, 42)
+            AutoText("NEXUS INTEGRITY : ", 42)-- .. stats.integrity, 42)
+            UiPush()
+                local minIntegrity = 40
+                local ratio = (stats.integrity - minIntegrity) / (100 - minIntegrity)
+                ratio = math.max(0, ratio)
+                UiColor(1 - ratio, ratio, 0.2, 1)
+                UiTranslate(170, -42)
+                UiRect(ratio * 130, 30)
+            UiPop()
+            AutoText("FUEL : ", 42)
+            UiPush()
+                local ratio = stats.fuel
+                ratio = math.max(0, ratio)
+                UiColor(1, 1, 1, 1)
+                UiTranslate(170, -42)
+                UiRect(ratio * 130, 30)
+            UiPop()
             AutoText("MONEY : " .. stats.money, 42)
         local spread = AutoSpreadEnd()
     UiPop()
 
-    -- Soilder Display
+    -- Soldier Display
     UiPush()
         UiTranslate(AutoPad.heavy, spread.comb.h + AutoPad.thick * 3 + AutoPad.heavy)
 
@@ -56,7 +73,7 @@ function RTSDrawMenu()
 
         -- at around wave 20 it will start shaking a bit, caps out around 50
         -- Can be removed if you want, I always like adding juice
-        local extra = stats.wave == 0 and 0 or AutoLogistic(stats.wave, 2, -0.25, 30)
+        local extra = stats.wave == 0 and 0 or AutoLogistic(stats.wave, 2, -0.25, 10)
         local rnd = AutoRndVec(extra)
         UiTranslate(rnd[1], rnd[2])
 

@@ -268,6 +268,7 @@ function tick(dt)
 	end
 
 	SetFloat('level.rts.stats.integrity', getNexusIntegrity())
+	SetFloat('level.rts.stats.fuel', getFuelPercent())
 	SetFloat('level.rts.stats.money', nexus.money)
 	SetInt('level.rts.stats.wave', nexus.wave)
 	SetFloat('level.rts.stats.waveCooldown', nexus.waveCooldown.value)
@@ -284,7 +285,9 @@ end
 
 
 function draw(dt)
-	RTSDrawMenu()
+	if nexus.alive then
+		RTSDrawMenu()
+	end
 	
 	if isLoading then
 		return
@@ -413,6 +416,19 @@ function setPathInRegistry(identifier, path)
 	end
 end
 
+function getPathInRegistry(identifier)
+	local path = {}
+	local len = GetInt("level.rts.path.points." .. identifier .. ".length")
+	for i=1, len do
+		local v = Vec()
+		for j=1, 3 do
+			v[j] = GetFloat("level.rts.path.points." .. identifier .. "." .. i .. "." .. j)
+		end
+		path[#path + 1] = VecCopy(v)
+	end
+	return path
+end
+
 function spawnNexus(t)
 	SetString("game.player.tool", toolname)
 	local entities = Spawn("vox/nexus.xml", t)
@@ -532,9 +548,12 @@ function updateNexus(dt)
 		makeSpawn()
 		return
 	end
+
+	for i=1, #nexus.bodies do
+		DrawBodyOutline(nexus.bodies[i], 1, 0.6, 0.6, 1)
+	end
 	
 	nexus.fuel.value = nexus.fuel.value - (nexus.fuel.lose.base + nexus.fuel.lose.perUnit * #getAllies()) * dt
-	DebugWatch("fuel", nexus.fuel.value)
 	if nexus.fuel.value <= 0 then
 		nexus.alive = false
 	end
@@ -710,9 +729,19 @@ function select()
 			if identifier == tostring(tool.selected[j].id) then
 				if getAliveStatusInRegistry(tool.selected[j].id) then
 					DrawBodyHighlight(allBodies[i], 1)
-					--if VecLength(VecSub(tool.selected[j].t.pos, getNavigationPosFromRegistry(tool.selected[j].id))) > 1.5 then
-						--DrawLine(tool.selected[j].t.pos, getNavigationPosFromRegistry(tool.selected[j].id), 0.2, 0.7, 0.2, 0.2)
-					--end
+					if VecLength(VecSub(tool.selected[j].t.pos, getNavigationPosFromRegistry(tool.selected[j].id))) > 1.5 then
+						local path = getPathInRegistry(tool.selected[j].id)
+						for i=1, #path - 1 do
+							for i=1, #path - 1 do
+								local dashStyle = true
+								if dashStyle and (i % 2 == 0) then
+						
+								else
+									DrawLine(path[i], path[i + 1], 0, 1, 1, 0.7)
+								end
+							end
+						end
+					end
 					local targetId = getTargetId(tool.selected[j].id)
 					--DebugPrint(">" .. targetId .. type(targetId))
 					if targetId > 0 then--targetId ~= 0 then
@@ -944,16 +973,20 @@ function updateTransformAllSoldiers()
 	end
 end
 
+function getFuelPercent()
+	return math.max(nexus.fuel.value, 0) / nexus.fuel.max
+end
+
 function getClosestTargetIdentifier(soldier)
 
 	local best = {
-		id = nil,
+		id = 0,
 		dist = 0
 	}
 	for i=1, #soldiers do
 		if soldiers[i].team ~= soldier.team and getAliveStatusInRegistry(soldiers[i].id) then
 			local dist = VecLength(VecSub(soldiers[i].t.pos, soldier.t.pos))
-			if best.id == nil or dist < best.dist then
+			if best.id == 0 or dist < best.dist then
 				best.id = soldiers[i].id
 				best.dist = dist
 			end
@@ -969,7 +1002,7 @@ function getClosestTargetIdentifierIncludingNexus(soldier)
 	}
 	best.id, best.dist = getClosestTargetIdentifier(soldier)
 	local distToNexus = VecLength(VecSub(getNexusTransform().pos, soldier.t.pos))
-	if best.id == nil or distToNexus <= best.dist then
+	if best.id == 0 or distToNexus <= best.dist then
 		best.id = -1
 		best.dist = distToNexus
 	end

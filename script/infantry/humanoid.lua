@@ -385,13 +385,6 @@ function setUpdatedStatusInRegistry(value)
 end
 
 function getPathInRegistry()
-	--[[local str = GetString("level.rts.path.points." .. identifier)
-	--DebugPrint(str)
-	local t = stringToTable(str)
-	for i=1, #t do
-		DebugPrint(i .. "---" t[i][1] .. " " .. t[i][2] .. " " .. t[i][3])
-	end
-	return stringToTable(str)]]
 	local path = {}
 	local len = GetInt("level.rts.path.points." .. identifier .. ".length")
 	for i=1, len do
@@ -1249,7 +1242,7 @@ function navigationClear(callFrom)
 	callFrom = callFrom or ""
 	--AbortPath()
 	abortPathInRegistry()
-	DebugWatch(identifier, "abort " .. callFrom)
+	--DebugWatch(identifier, "abort " .. callFrom)
 	--abortPath(selfMd)
 	navigation.state = "done"
 	navigation.path = {}
@@ -2187,17 +2180,6 @@ function tick(dt)
 	end
 
 	--debugState()
-	--[[for i=1, #navigation.path - 1 do
-		DrawLine(navigation.path[i], navigation.path[i + 1])
-	end]]
-	for i=1, #navigation.path - 1 do
-		local dashStyle = true
-		if dashStyle and (i % 2 == 0) then
-
-		else
-			DrawLine(navigation.path[i], navigation.path[i + 1], 0, 1, 1, 0.7)
-		end
-	end
 end
 
 
