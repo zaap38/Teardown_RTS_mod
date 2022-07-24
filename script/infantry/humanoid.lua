@@ -318,6 +318,7 @@ hover.distPadding = 0.3
 hover.timeSinceContact = 0.0
 
 function getNavigationPosFromRegistry()
+	--DebugPrint("get nav pos")
 	local pos = Vec()
 	for i=1, 3 do
 		pos[i] = GetFloat("level.rts.navigation_pos." .. identifier .. "." .. i)
@@ -375,6 +376,14 @@ function stringToTable(str)
     return tbl
 end
 
+function getUpdatedStatusInRegistry()
+	return GetBool("level.rts.path.updated." .. identifier)
+end
+
+function setUpdatedStatusInRegistry(value)
+	return SetBool("level.rts.path.updated." .. identifier, value)
+end
+
 function getPathInRegistry()
 	--[[local str = GetString("level.rts.path.points." .. identifier)
 	--DebugPrint(str)
@@ -396,7 +405,15 @@ function getPathInRegistry()
 end
 
 function getPathStateInRegistry()
-	return GetString("level.rts.path.status." .. identifier) or "idle"
+	local value = GetString("level.rts.path.status." .. identifier)
+	if value == nil or value == "" then
+		value = "idle"
+	end
+	return value --or "idle"
+end
+
+function setPathStateInRegistry(value)
+	return SetString("level.rts.path.status." .. identifier, value)
 end
 
 function askPathQuery()
@@ -1255,6 +1272,7 @@ end
 
 function navigationSetTarget(pos, timeout)
 	pos = truncateToGround(pos)
+	--DebugPrint(VecDist(navigation.target, pos))
 	if VecDist(navigation.target, pos) > 2.0 then
 		--delayBeforeNewPos = 5
 		--DebugPrint(identifier .. " old " .. vecToStr(navigation.target))
@@ -1289,6 +1307,7 @@ function navigationUpdate(dt)
 		--if GetPathState() == "done" or GetPathState() == "fail" then
 		if getPathStateInRegistry() == "done" or getPathStateInRegistry() == "fail" then
 			if not navigation.resultRetrieved then
+				--DebugPrint("humanoid")
 				--[[
 				if GetPathLength() > 0.5 then
 					local step = 0.5
@@ -1297,20 +1316,19 @@ function navigationUpdate(dt)
 					end
 				end
 				]]
-				local path = getPathInRegistry()
-				if #path > 1 then
-					--navigation.path = path
+				if getUpdatedStatusInRegistry() then
+					setUpdatedStatusInRegistry(false)
+					local path = getPathInRegistry()
 					navigation.path = {}
 					for i=#path, 1, -1 do
 						navigation.path[#navigation.path + 1] = path[i]
 					end
-				end
-				--navigation.path = deepcopy(getPath(selfMd))
 
-				navigation.lastQueryTime = navigation.thinkTime
-				navigation.resultRetrieved = true
-				navigation.state = "move"
-				navigationPrunePath()
+					navigation.lastQueryTime = navigation.thinkTime
+					navigation.resultRetrieved = true
+					navigation.state = "move"
+					navigationPrunePath()
+				end
 			end
 		end
 		navigation.thinkTime = 0
@@ -1408,6 +1426,7 @@ function navigationMove(dt)
 						dist = distance
 					}
 				end
+				--navigation.path[i] = VecAdd()
 			end
 			if minDistToPath ~= nil then
 				local newPath = {}
@@ -1597,18 +1616,18 @@ end
 
 function debugState()
 	local state = stackTop()
-	--[[DebugWatch("state", state.id)
-	DebugWatch("activeTime", state.activeTime)
-	DebugWatch("totalTime", state.totalTime)
+	DebugWatch("state", state.id)
+	--DebugWatch("activeTime", state.activeTime)
+	--DebugWatch("totalTime", state.totalTime)
 	DebugWatch("navigation.state", navigation.state)
 	DebugWatch("#navigation.path", #navigation.path)
 	DebugWatch("navigation.hasNewTarget", navigation.hasNewTarget)
-	DebugWatch("humanoid.blocked", humanoid.blocked)
-	DebugWatch("humanoid.speed", humanoid.speed)
-	DebugWatch("navigation.blocked", navigation.blocked)
-	DebugWatch("navigation.unblock", navigation.unblock)
-	DebugWatch("navigation.unblockTimer", navigation.unblockTimer)
-	DebugWatch("navigation.thinkTime", navigation.thinkTime)]]
+	--DebugWatch("humanoid.blocked", humanoid.blocked)
+	--DebugWatch("humanoid.speed", humanoid.speed)
+	--DebugWatch("navigation.blocked", navigation.blocked)
+	--DebugWatch("navigation.unblock", navigation.unblock)
+	--DebugWatch("navigation.unblockTimer", navigation.unblockTimer)
+	--DebugWatch("navigation.thinkTime", navigation.thinkTime)
 	DebugWatch("GetPathState()" .. identifier, getPathStateInRegistry())
 end
 
@@ -1897,6 +1916,7 @@ function update(dt)
 			navigationSetTarget(getNavigationPosFromRegistry(), state.timeout)
 			humanoid.speedScale = config.huntSpeedScale
 			navigationUpdate(dt)
+			--navigationSetTarget(getNavigationPosFromRegistry(), state.timeout)
 			if head.canSeePlayer then
 				head.dir = VecCopy(humanoid.dirToPlayer)
 				state.headAngle = 0
@@ -2167,9 +2187,9 @@ function tick(dt)
 	end
 
 	--debugState()
-	--for i=1, #navigation.path - 1 do
-		--DrawLine(navigation.path[i], navigation.path[i + 1])
-	--end
+	--[[for i=1, #navigation.path - 1 do
+		DrawLine(navigation.path[i], navigation.path[i + 1])
+	end]]
 	for i=1, #navigation.path - 1 do
 		local dashStyle = true
 		if dashStyle and (i % 2 == 0) then

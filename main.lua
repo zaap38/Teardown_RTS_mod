@@ -145,8 +145,9 @@ function tick(dt)
 					local str = ""
 					for i=1, #queryQueue[1].askers do
 						str = str .. queryQueue[1].askers[i] .. ", "
+						setUpdatedStatusInRegistry(queryQueue[1].askers[i], true)
 					end
-					DebugPrint("Askers: " .. str)
+					--DebugPrint("Askers: " .. str)
 				end
 				--DebugPrint("end")
 				abortPath(md)
@@ -158,6 +159,7 @@ function tick(dt)
 			end
 			for i=1, #askers do
 				setPathStatusInRegistry(askers[i], status)
+				--DebugPrint("main")
 			end
 		end
 		--edgesDebugLine(true, md)
@@ -371,6 +373,10 @@ function vecResize(v, s)
 end
 
 ---------------------------------
+
+function setUpdatedStatusInRegistry(identifier, value)
+	return SetBool("level.rts.path.updated." .. identifier, value)
+end
 
 function setPathStatusInRegistry(identifier, status)
 	SetString("level.rts.path.status." .. identifier, status)
@@ -980,6 +986,7 @@ function setAllTarget()
 						target = getNavigationPosFromRegistry(i)
 					}
 				end
+				
 				if soldiers[i].team == ENEMY_TEAM or isInTable(tool.selected, i) then
 					pathQuery.askers[#pathQuery.askers + 1] = i
 				end
