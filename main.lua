@@ -773,17 +773,22 @@ function select()
 	for i=1, #allBodies do
 		local identifier = GetTagValue(allBodies[i], "identifier")
 		for j=1, #tool.selected do
-			if identifier == tostring(tool.selected[j].id) then
-				if getAliveStatusInRegistry(tool.selected[j].id) then
+			local soldier = tool.selected[j]
+			if identifier == tostring(soldier.id) then
+				if getAliveStatusInRegistry(soldier.id) then
 					DrawBodyHighlight(allBodies[i], 1)
-					if VecLength(VecSub(tool.selected[j].t.pos, getNavigationPosFromRegistry(tool.selected[j].id))) > 1.5 then
-						local path = getPathInRegistry(tool.selected[j].id)
+					if VecLength(VecSub(soldier.t.pos, getNavigationPosFromRegistry(soldier.id))) > 3 then
+						local path = getPathInRegistry(soldier.id)
+						local draw = true
 						for i=1, #path - 1 do
-							for i=1, #path - 1 do
-								local dashStyle = true
-								if dashStyle and (i % 2 == 0) then
-						
-								else
+							local dashStyle = true
+							if VecLength(VecSub(soldier.t.pos, path[i])) <= 3 then
+								draw = false
+							end
+							if dashStyle and (i % 2 == 0) then
+					
+							else
+								if draw then
 									DrawLine(path[i], path[i + 1], 0, 1, 1, 0.7)
 								end
 							end
@@ -1332,7 +1337,9 @@ function handlePathfindingQueries()
 				if queryQueue[1].status == "done" then
 					local path = getSmoothPath(md)
 					for i=1, #queryQueue[1].askers do
-						setPathInRegistry(queryQueue[1].askers[i], path)
+						personnalPath = deepcopy(path)
+						table.insert(personnalPath, 1, getNavigationPosFromRegistry(queryQueue[1].askers[i]))
+						setPathInRegistry(queryQueue[1].askers[i], personnalPath)
 					end
 					for i=1, #queryQueue[1].askers do
 						setUpdatedStatusInRegistry(queryQueue[1].askers[i], true)
