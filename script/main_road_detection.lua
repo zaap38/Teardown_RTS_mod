@@ -1153,7 +1153,6 @@ function addNeighboursToQueue(md)
 	local points = md.points
 	local pf = md.pf
 	local indexList = md.indexList
-
 	for i=1, #points[pf.current].neighbors do
 		if points[pf.current].neighbors[i].x ~= nil and
 				indexList[points[pf.current].neighbors[i].x] ~= nil and

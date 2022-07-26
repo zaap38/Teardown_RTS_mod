@@ -72,7 +72,7 @@ function init()
 			max = 300,
 			lose = {
 				base = 5,
-				perUnit = 2.5
+				perUnit = 1
 			}
 		},
 		supplies = {
@@ -83,9 +83,15 @@ function init()
 				default = 5
 			},
 			fuel = 150
-		}
+		},
+		waveIncrement = {}
 	}
 	oldCount = #nexus.spawns
+
+	nexus.waveIncrement[#nexus.waveIncrement + 1] = makeWaveIncrement(1, 1, 0, 0, 0, 0)
+	nexus.waveIncrement[#nexus.waveIncrement + 1] = makeWaveIncrement(0, 1, 1, 0, 0, 0)
+	nexus.waveIncrement[#nexus.waveIncrement + 1] = makeWaveIncrement(0, 0, 1, 0, 0, 1)
+	nexus.waveIncrement[#nexus.waveIncrement + 1] = makeWaveIncrement(1, 0, 1, 0, 0, 1)
 
 	cost = {
 		INFANTRY = 400,
@@ -120,77 +126,59 @@ function init()
 	firstQuery = true
 	queryQueue = {}
 	countQuery = 0
+
+	sndInfantry = LoadSound("MOD/snd/spawn_infantry.ogg")
+	sndHeavy = LoadSound("MOD/snd/spawn_heavy.ogg")
+	sndSniper = LoadSound("MOD/snd/spawn_sniper.ogg")
+	sndDoc = LoadSound("MOD/snd/spawn_doc.ogg")
+	sndNewNavPos = {}
+	sndNewNavPos[#sndNewNavPos + 1] = LoadSound("MOD/snd/new_nav_pos1.ogg")
+	sndNewNavPos[#sndNewNavPos + 1] = LoadSound("MOD/snd/new_nav_pos2.ogg")
+	sndNewNavPos[#sndNewNavPos + 1] = LoadSound("MOD/snd/new_nav_pos3.ogg")
+	sndNewTarget = {}
+	sndNewTarget[#sndNewTarget + 1] = LoadSound("MOD/snd/new_target1.ogg")
+	sndNewTarget[#sndNewTarget + 1] = LoadSound("MOD/snd/new_target2.ogg")
+	sndNewTarget[#sndNewTarget + 1] = LoadSound("MOD/snd/new_target3.ogg")
+
+	powers = {
+		artillery = {
+			cooldown = {
+				value = 0,
+				default = 30
+			},
+			delay = {
+				value = 0,
+				default = 5
+			},
+			count = {
+				value = 0,
+				default = 5,
+				baseInterval = 0.3
+			},
+			target = Vec()
+		},
+		minefield = {
+			cooldown = {
+				value = 0,
+				default = 30
+			},
+			mines = {}
+		}
+	}
 end
 
 
 function tick(dt)
 	
-	if firstPassage then
-		firstPassage = false
-		local worldAA, worldBB = GetBodyBounds(GetWorldBody())
-		md = makeMappingData(worldAA, worldBB)
-		md.step = 3
-	end
-	processDebugCross(md)
-	processUpdate(md)
-	--DebugWatch("countQuery", countQuery)
-	
-	if md.status > 3 then
-		if #queryQueue > 0 then
-			queryQueue[1].status = getPathState(md)
-			local status = queryQueue[1].status
-			local askers = queryQueue[1].askers
-			if queryQueue[1].status == "idle" then
-				queryPath(md, queryQueue[1].start, queryQueue[1].target)
-				countQuery = countQuery + 1
-				queryQueue[1].status = getPathState(md)
-			elseif queryQueue[1].status == "fail" or queryQueue[1].status == "done" then
-				local newQueue = {}
-				if queryQueue[1].status == "done" then
-					local path = getSmoothPath(md)
-					for i=1, #queryQueue[1].askers do
-						setPathInRegistry(queryQueue[1].askers[i], path)
-					end
-					for i=1, #queryQueue[1].askers do
-						setUpdatedStatusInRegistry(queryQueue[1].askers[i], true)
-					end
-				end
-				abortPath(md)
-				
-				for i=2, #queryQueue do
-					newQueue[#newQueue + 1] = queryQueue[i]
-				end
-				queryQueue = newQueue
-			end
-			for i=1, #askers do
-				setPathStatusInRegistry(askers[i], status)
-			end
-		end
-		--edgesDebugLine(true, md)
-	end
+	handlePathfindingQueries()
+
+	handlePowers(dt)
 
 	if nexus.alive then
 		updateNexus(dt)
-		if nexus.cooldown.value <= 0 and nexus.maxEnemiesCount > nexus.enemiesCount and nexus.wave >= 0 then
-			spawnEnemieFromNexus()
-			nexus.cooldown.value = nexus.cooldown.default
-		end
-		nexus.supplies.cooldown.value = nexus.supplies.cooldown.value - dt
-		if nexus.supplies.cooldown.value <= 0 then
-			nexus.supplies.cooldown.value = nexus.supplies.cooldown.default
-			while not spawnSupply() do
-
-			end
-		end
 	end
 
-	for j=1, #nexus.supplies.array do
-		if nexus.supplies.array[j].alive then
-			for k=1, #nexus.supplies.array[j].bodies do
-				DrawBodyOutline(nexus.supplies.array[j].bodies[k], 1, 1, 0, 1)
-			end
-		end
-	end
+	drawSuppliesOutline()
 
 	if GetString("game.player.tool") == toolname then
 		if InputPressed("usetool") then
@@ -220,18 +208,6 @@ function tick(dt)
 		if InputPressed("n") then
 			spawnNexus(spawnTransform)
 		end
-		if InputPressed("b") then
-			--[[for i=1, #soldiers do
-				if soldiers[i].team == ENEMY_TEAM then
-					local pos = spawnTransform.pos
-					local offset = randVec(4)
-					offset[2] = 0
-					pos = VecAdd(pos, offset)
-					setNavigationPosInRegistry(pos, i)
-				end
-			end]]
-			makeSoldier(ENEMY_TEAM, spawnTransform, DOC)
-		end
 	else
 		spawnTransform = Transform(makeOffset(getNexusTransform().pos, 3))
 		if InputPressed("c") then
@@ -246,6 +222,7 @@ function tick(dt)
 				makeSoldier(ALLY_TEAM, spawnTransform, HEAVY_INFANTRY)
 			end
 		end
+
 		if InputPressed("b") then
 			if nexus.money >= cost.SNIPER then
 				nexus.money = nexus.money - cost.SNIPER
@@ -259,12 +236,16 @@ function tick(dt)
 				makeSoldier(ALLY_TEAM, spawnTransform, DOC)
 			end
 		end
-
-	end
-
-	if InputPressed("p") then
-		nexus.waveCooldown.value = 0
-		nexus.money = 10000
+		
+		local hitPos = getMouseHitPos()
+		if hitPos ~= nil then
+			if InputPressed("f1") and powers.minefield.cooldown.value <= 0 then
+				minefield(hitPos)
+			end
+			if InputPressed("f2") and powers.artillery.cooldown.value <= 0 then
+				artillery(hitPos)
+			end
+		end
 	end
 
 	SetFloat('level.rts.stats.integrity', getNexusIntegrity())
@@ -280,7 +261,7 @@ function update(dt)
 		return
 	end
 	updateTransformAllSoldiers()
-	setAllTarget()
+	updateSoldiers()
 end
 
 
@@ -298,12 +279,13 @@ function draw(dt)
 		select()
 		command()
 		for i=1, #soldiers do
-			if getAliveStatusInRegistry(i) then
+			local soldier = soldiers[i]
+			if getAliveStatusInRegistry(soldier.id) then
 				--health
 				local size = 1.5
-				local pos = VecAdd(soldiers[i].t.pos, Vec(-0.5, 1.2, 0.5))
+				local pos = VecAdd(soldier.t.pos, Vec(-0.5, 1.2, 0.5))
 				DrawLine(pos, VecAdd(pos, Vec(size)), 1, 0.2, 0.2, 1)
-				DrawLine(pos, VecAdd(pos, Vec(size * getHealthInRegistry(i) / health[soldiers[i].type])), 0.2, 1, 0.2, 1)
+				DrawLine(pos, VecAdd(pos, Vec(size * getHealthInRegistry(soldier.id) / health[soldier.type])), 0.2, 1, 0.2, 1)
 			end
 		end
 	end
@@ -396,6 +378,17 @@ end
 
 ---------------------------------
 
+function makeWaveIncrement(infCount, heavyCount, sniperCount, capCount, tankCount, docCount)
+	return {
+		INFANTRY = infCount,
+		HEAVY_INFANTRY = heavyCount,
+		SNIPER = sniperCount,
+		CAPTAIN = capCount,
+		TANK = tankCount,
+		DOC = docCount
+	}
+end
+
 function setUpdatedStatusInRegistry(identifier, value)
 	return SetBool("level.rts.path.updated." .. identifier, value)
 end
@@ -405,9 +398,6 @@ function setPathStatusInRegistry(identifier, status)
 end
 
 function setPathInRegistry(identifier, path)
-	--DebugPrint("len " .. #path)
-	--SetString("level.rts.path.points." .. identifier, tableToString(path))
-	--ClearKey("level.rts.path.points." .. identifier)
 	SetInt("level.rts.path.points." .. identifier .. ".length", #path)
 	for i=1, #path do
 		for j=1, 3 do
@@ -446,18 +436,14 @@ function initNexus()
 	nexus.integrity.current = nexus.integrity.initial
 	nexus.wave = 0
 	nexus.alive = true
-	nexus.enemies = {}
 	nexus.money = 800
 	nexus.cooldown.default = 8
 	nexus.cooldown.value = nexus.cooldown.default
 	nexus.waveCooldown.value = nexus.waveCooldown.default
-	nexus.maxEnemiesCount = 8
+	nexus.maxEnemiesCount = 25
 	nexus.fuel.value = nexus.fuel.max
 	nexus.roundRobin = {}
 	nexus.roundRobin[#nexus.roundRobin + 1] = INFANTRY
-	nexus.roundRobin[#nexus.roundRobin + 1] = HEAVY_INFANTRY
-	nexus.roundRobin[#nexus.roundRobin + 1] = SNIPER
-	nexus.roundRobin[#nexus.roundRobin + 1] = DOC
 	initNexusSpawns(4)
 end
 
@@ -490,11 +476,23 @@ end
 function getAllies()
 	local allies = {}
 	for i=1, #soldiers do
-		if getAliveStatusInRegistry(soldiers[i].id) and soldiers[i].team == ALLY_TEAM then
-			allies[#allies + 1] = soldiers[i]
+		local soldier = soldiers[i]
+		if getAliveStatusInRegistry(soldier.id) and soldier.team == ALLY_TEAM then
+			allies[#allies + 1] = soldier
 		end
 	end
 	return allies
+end
+
+function getEnemies()
+	local enemies = {}
+	for i=1, #soldiers do
+		local soldier = soldiers[i]
+		if getAliveStatusInRegistry(soldier.id) and soldier.team == ENEMY_TEAM then
+			enemies[#enemies + 1] = soldier
+		end
+	end
+	return enemies
 end
 
 function makeSpawn()
@@ -519,26 +517,28 @@ function makeSpawn()
 			local hitPos = VecAdd(offset, VecScale(dir, dist - 0.5))
 			nexus.tentative = hitPos
 
-			minDist = 10000
+			minDist = nil
 			for i=1, #nexus.spawns do
 				local distance = VecLength(VecSub(nexus.spawns[i], hitPos))
-				if distance < minDist then
+				if minDist == nil or distance < minDist then
 					minDist = distance
 				end
 			end
 
-			if not IsPointInWater(hitPos) and minDist >= 20 then
+			if not IsPointInWater(hitPos) and (#nexus.spawns == 0 or minDist >= 20) then
 				queryPath(md, hitPos, pos)
 				nexus.spawnInitTime = 0
 			end
 		end
 	elseif state == "busy" then
 		if nexus.spawnInitTime >= 5 then
-			AbortPath()
+			abortPath(md)
 		end
 	elseif state == "done" then
 		nexus.spawns[#nexus.spawns +  1] = deepcopy(nexus.tentative)
 	end
+
+	DrawLine(nexus.tentative, VecAdd(nexus.tentative, Vec(0, 5, 0)))
 end
 
 function updateNexus(dt)
@@ -549,42 +549,75 @@ function updateNexus(dt)
 		return
 	end
 
+	drawNexusOutline()
+	updateFuel(dt)
+	incrementMoney(dt)
+	updateNexusState()
+	updateNexusWave(dt)
+	updateNexusEnemySpawn(dt)
+	updateSupplies(dt)
+end
+
+function updateSupplies(dt)
+	nexus.supplies.cooldown.value = nexus.supplies.cooldown.value - dt
+	if nexus.wave > 0 and nexus.supplies.cooldown.value <= 0 then
+		nexus.supplies.cooldown.value = nexus.supplies.cooldown.default
+		while not spawnSupply() do end
+	end
+end
+
+function updateNexusEnemySpawn(dt)
+	nexus.cooldown.value = nexus.cooldown.value - dt
+	
+	nexus.cooldown.default = math.max(8 - nexus.wave * 0.6, 2)
+	nexus.enemiesCount = #getEnemies()
+
+	if nexus.cooldown.value <= 0 and nexus.maxEnemiesCount > nexus.enemiesCount and nexus.wave >= 0 then
+		spawnEnemieFromNexus()
+		nexus.cooldown.value = nexus.cooldown.default
+	end
+end
+
+function updateNexusWave(dt)
+	nexus.waveCooldown.value = nexus.waveCooldown.value - dt
+	if nexus.waveCooldown.value <= 0 then
+		nexus.waveCooldown.value = nexus.waveCooldown.default
+		nexus.wave = nexus.wave + 1
+		local increment = nexus.waveIncrement[(nexus.wave % #nexus.waveIncrement) + 1]
+		for k, v in ipairs(increment) do
+			for i=1, v do
+				nexus.roundRobin[#nexus.roundRobin + 1] = k
+			end
+		end
+	end
+end
+
+function updateFuel(dt)
+	nexus.fuel.value = nexus.fuel.value - (nexus.fuel.lose.base + nexus.fuel.lose.perUnit * #getAllies()) * dt
+end
+
+function drawNexusOutline()
 	for i=1, #nexus.bodies do
 		DrawBodyOutline(nexus.bodies[i], 1, 0.6, 0.6, 1)
 	end
+end
+
+function incrementMoney(dt)
+	local value = nexus.moneyPerSecond * dt
+	nexus.money = nexus.money + value
+end
+
+function updateNexusState()
+	nexus.integrity.current = getNexusVoxCount()
+	local oldState = nexus.alive
+	nexus.alive = nexus.integrity.min <= getNexusIntegrity()
 	
-	nexus.fuel.value = nexus.fuel.value - (nexus.fuel.lose.base + nexus.fuel.lose.perUnit * #getAllies()) * dt
 	if nexus.fuel.value <= 0 then
 		nexus.alive = false
 	end
 
-	local value = nexus.moneyPerSecond * dt
-	nexus.money = nexus.money + value
-	nexus.integrity.current = getNexusVoxCount()
-	local oldState = nexus.alive
-	nexus.alive = nexus.integrity.min <= getNexusIntegrity()
 	if nexus.alive ~= oldState then
 		Explosion(getNexusTransform().pos, 4)
-	end
-	nexus.cooldown.value = nexus.cooldown.value - dt
-	nexus.waveCooldown.value = nexus.waveCooldown.value - dt
-	local nextWave = false
-	if nexus.waveCooldown.value <= 0 then
-		nexus.waveCooldown.value = nexus.waveCooldown.default
-		nexus.wave = nexus.wave + 1
-		nextWave = true
-	end
-	nexus.cooldown.default = 8 - nexus.wave * 0.5
-	nexus.enemiesCount = 0
-	for i=1, #soldiers do
-		if soldiers[i].team == ENEMY_TEAM and getAliveStatusInRegistry(i) then
-			nexus.enemiesCount = nexus.enemiesCount + 1
-		end
-	end
-	if nextWave then
-		for i=1, nexus.wave * 2 do
-			--nexus.roundRobin[#nexus.roundRobin + 1] = rand(1, 2)
-		end
 	end
 end
 
@@ -693,6 +726,19 @@ function setTypeInRegistry(identifier)
 	SetInt("level.rts.type." .. identifier, soldiers[identifier].type)
 end
 
+function getMouseHitPos()
+	local mx, my = UiGetMousePos()
+	local maxDist = 200
+	local dir = UiPixelToWorld(mx, my)
+	local pos = GetCameraTransform().pos
+	local hit, dist, normal, shape = QueryRaycast(pos, dir, maxDist)
+	local hitPos = Vec(0, -100, 0)
+	if hit then
+		return VecAdd(pos, VecScale(dir, dist - 0.2))
+	end
+	return nil
+end
+
 function select()
 
 	local mx, my = UiGetMousePos()
@@ -713,10 +759,11 @@ function select()
 
 		tool.selected = {}
 		for i=1, #soldiers do
-			if soldiers[i].team == ALLY_TEAM then
-				local x, y = UiWorldToPixel(soldiers[i].t.pos)
-				if x >= tool.aa[1] and x <= tool.bb[1] and y >= tool.aa[3] and y <= tool.bb[3] and getAliveStatusInRegistry(soldiers[i].id) then
-					tool.selected[#tool.selected + 1] = soldiers[i]
+			local soldier = soldiers[i]
+			if soldier.team == ALLY_TEAM then
+				local x, y = UiWorldToPixel(soldier.t.pos)
+				if x >= tool.aa[1] and x <= tool.bb[1] and y >= tool.aa[3] and y <= tool.bb[3] and getAliveStatusInRegistry(soldier.id) then
+					tool.selected[#tool.selected + 1] = soldier
 				end
 			end
 		end
@@ -743,20 +790,18 @@ function select()
 						end
 					end
 					local targetId = getTargetId(tool.selected[j].id)
-					--DebugPrint(">" .. targetId .. type(targetId))
-					if targetId > 0 then--targetId ~= 0 then
+					if targetId > 0 then
 						DrawLine(tool.selected[j].t.pos, soldiers[targetId].t.pos, 0.7, 0.2, 0.2, 0.2)
 					end
-
-					--health
-					--local size = 1.5
-					--DrawLine(tool.selected[j].t.pos, VecAdd(tool.selected[j].t.pos, Vec(size, 0, 0)), 0.7, 0.2, 0.2, 0.2)
-					--DrawLine(tool.selected[j].t.pos, VecAdd(tool.selected[j].t.pos, Vec(size * getHealthInRegistry(identifier) / 100)), 0.2, 0.7, 0.2, 0.9)
 					break
 				end
 			end
 		end
 	end
+end
+
+function getCameraPos()
+	return Vec(tool.x, tool.height, tool.y)
 end
 
 function command()
@@ -792,8 +837,10 @@ function command()
 			if tool.selected[i].team == ALLY_TEAM then
 				if targetId == nil then
 					setNavigationPosInRegistry(hitPos, tool.selected[i].id)
+					PlaySound(sndNewNavPos[rand(1, 3)], getCameraPos())
 				end
 				if targetId ~= nil then
+					PlaySound(sndNewTarget[rand(1, 3)], getCameraPos())
 					setTargetPosInRegistry(targetId, tool.selected[i].id)
 					setTargetIdInRegistry(targetId, tool.selected[i].id)
 				end
@@ -820,6 +867,9 @@ function initInfantry(team, t)
 		SetTag(entities[i], "team", tostring(soldier.team))
 	end
 	identifierCount = identifierCount + 1
+	if team == ALLY_TEAM then
+		PlaySound(sndInfantry, getCameraPos())
+	end
 	return soldier
 end
 
@@ -841,6 +891,9 @@ function initHeavy(team, t)
 		SetTag(entities[i], "team", tostring(soldier.team))
 	end
 	identifierCount = identifierCount + 1
+	if team == ALLY_TEAM then
+		PlaySound(sndHeavy, getCameraPos())
+	end
 	return soldier
 end
 
@@ -862,6 +915,9 @@ function initSniper(team, t)
 		SetTag(entities[i], "team", tostring(soldier.team))
 	end
 	identifierCount = identifierCount + 1
+	if team == ALLY_TEAM then
+		PlaySound(sndSniper, getCameraPos())
+	end
 	return soldier
 end
 
@@ -883,6 +939,9 @@ function initDoc(team, t)
 		SetTag(entities[i], "team", tostring(soldier.team))
 	end
 	identifierCount = identifierCount + 1
+	if team == ALLY_TEAM then
+		PlaySound(sndDoc, getCameraPos())
+	end
 	return soldier
 end
 
@@ -961,15 +1020,17 @@ end
 
 function getSoldierByIdentifier(identifier)
 	for i=1, #soldiers do
-		if soldiers[i].id == identifier then
-			return soldiers[i]
+		local soldier = soldiers[i]
+		if soldier.id == identifier then
+			return soldier
 		end
 	end
 end
 
 function updateTransformAllSoldiers()
 	for i=1, #soldiers do
-		soldiers[i].t = GetBodyTransform(soldiers[i].bodies[1])
+		local soldier = soldiers[i]
+		soldier.t = GetBodyTransform(soldier.bodies[1])
 	end
 end
 
@@ -984,10 +1045,11 @@ function getClosestTargetIdentifier(soldier)
 		dist = 0
 	}
 	for i=1, #soldiers do
-		if soldiers[i].team ~= soldier.team and getAliveStatusInRegistry(soldiers[i].id) then
-			local dist = VecLength(VecSub(soldiers[i].t.pos, soldier.t.pos))
+		local soldier = soldiers[i]
+		if soldier.team ~= soldier.team and getAliveStatusInRegistry(soldier.id) then
+			local dist = VecLength(VecSub(soldier.t.pos, soldier.t.pos))
 			if best.id == 0 or dist < best.dist then
-				best.id = soldiers[i].id
+				best.id = soldier.id
 				best.dist = dist
 			end
 		end
@@ -1020,8 +1082,9 @@ end
 function getDocs()
 	local docs = {}
 	for i=1, #soldiers do
-		if getAliveStatusInRegistry(soldiers[i].id) and soldiers[i].type == DOC then
-			docs[#docs + 1] = soldiers[i]
+		local soldier = soldiers[i]
+		if getAliveStatusInRegistry(soldier.id) and soldier.type == DOC then
+			docs[#docs + 1] = soldier
 		end
 	end
 	return docs
@@ -1057,63 +1120,108 @@ function getSupply(identifier)
 	end
 end
 
-function setAllTarget()
-
-	local docs = getDocs()
-	local pathQuery = nil
+function getAliveSoldiers()
+	local aliveSoldiers = {}
 
 	for i=1, #soldiers do
-		if getAliveStatusInRegistry(soldiers[i].id) then
-			local targetId = getTargetId(i)
+		local soldier = soldiers[i]
+		if getAliveStatusInRegistry(soldier.id) then
+			aliveSoldiers[#aliveSoldiers + 1] = soldier
+		end
+	end
 
-			if targetId == -1 or not getAliveStatusInRegistry(targetId) then
-				local target
-				if soldiers[i].team == ALLY_TEAM or not nexus.alive then
-					target = getClosestTargetIdentifier(soldiers[i])
-				else
-					target = getClosestTargetIdentifierIncludingNexus(soldiers[i])
+	return aliveSoldiers
+end
+
+function updateSoldiers()
+
+	local aliveSoldiers = getAliveSoldiers()
+	local docs = getDocs()
+
+	for i=1, #aliveSoldiers do
+		local soldier = aliveSoldiers[i]
+		if getAliveStatusInRegistry(soldier.id) then
+			updateSoldier(soldier, docs)
+		end
+	end
+
+	handleSoldiersPathQuery()
+end
+
+function updateSoldier(soldier, docs)
+	setTarget(soldier)
+	healSoldier(soldier, docs)
+	grabSupply(soldier)
+end
+
+function setTarget(soldier)
+	local targetId = getTargetId(soldier.id)
+
+	if targetId == -1 or not getAliveStatusInRegistry(targetId) then
+		local target
+		if soldier.team == ALLY_TEAM or not nexus.alive then
+			target = getClosestTargetIdentifier(soldier)
+		else
+			target = getClosestTargetIdentifierIncludingNexus(soldier)
+		end
+		if target ~= nil then
+			setTargetIdInRegistry(target, soldier.id)
+		end
+	end
+
+	setTargetPosInRegistry(getTargetId(soldier.id), soldier.id)
+end
+
+function healSoldier(soldier, docs)
+	for i=1, #docs do
+
+		local doc = docs[i]
+		local healing = false
+
+		if soldier.team == doc.team and VecLength(VecSub(soldier.t.pos, doc.t.pos)) < 12 then
+			healing = true
+			DrawLine(soldier.t.pos, doc.t.pos, 1, 0.6, 0.6, 0.5)
+			break
+		end
+	end
+	
+	setHealingStatusInRegistry(soldier.id, healing)
+end
+
+function grabSupply(soldier)
+	if soldier.team == ALLY_TEAM then
+		for j=1, #nexus.supplies.array do
+			local supply = nexus.supplies.array[j]
+			if supply.alive then
+				if VecLength(VecSub(soldier.t.pos, supply.pos)) <= 6 then
+					supply.alive = false
+					getSupply(supply.id)
 				end
-				if target ~= nil then
-					setTargetIdInRegistry(target, i)
-				end
-				local healing = false
-				for j=1, #docs do
-					if soldiers[i].team == docs[j].team and VecLength(VecSub(soldiers[i].t.pos, docs[j].t.pos)) < 12 then
-						healing = true
-						DrawLine(soldiers[i].t.pos, docs[j].t.pos, 1, 0.6, 0.6, 0.5)
-						break
-					end
-				end
-				setHealingStatusInRegistry(i, healing)
 			end
+		end
+	end
+end
 
-			setTargetPosInRegistry(getTargetId(i), i)
+function handleSoldiersPathQuery()
+	local pathQuery = nil
+	for i=1, #soldiers do
+		local soldier = soldiers[i]
+		if getAliveStatusInRegistry(soldier.id) then
 
-			if getPathQueryInRegistry(i) then
-				setPathQueryInRegistry(i, false)
+			if getPathQueryInRegistry(soldier.id) then
+				setPathQueryInRegistry(soldier.id, false)
 
 				if pathQuery == nil then
 					pathQuery = {
 						askers = {},
 						status = "idle",
-						start = soldiers[i].t.pos,
+						start = soldier.t.pos,
 						target = getNavigationPosFromRegistry(i)
 					}
 				end
 				
-				if soldiers[i].team == ENEMY_TEAM or isInTable(tool.selected, i) then
-					pathQuery.askers[#pathQuery.askers + 1] = i
-				end
-			end
-
-			if soldiers[i].team == ALLY_TEAM then
-				for j=1, #nexus.supplies.array do
-					if nexus.supplies.array[j].alive then
-						if VecLength(VecSub(soldiers[i].t.pos, nexus.supplies.array[j].pos)) <= 4 then
-							nexus.supplies.array[j].alive = false
-							getSupply(nexus.supplies.array[j].id)
-						end
-					end
+				if soldier.team == ENEMY_TEAM or isInTable(tool.selected, soldier.id) then
+					pathQuery.askers[#pathQuery.askers + 1] = soldier.id
 				end
 			end
 		end
@@ -1123,6 +1231,125 @@ function setAllTarget()
 		if #pathQuery.askers > 0 then
 			queryQueue[#queryQueue + 1] = pathQuery
 		end
+	end
+end
+
+function handlePowers(dt)
+	handleMinefield(dt)
+	handleArtillery(dt)
+end
+
+function handleMinefield(dt)
+	powers.minefield.cooldown.value = powers.minefield.cooldown.value - dt
+	local newMines = {}
+	for i=1, #powers.minefield.mines do
+		if not IsHandleValid(powers.minefield.mines[i].body) then
+			powers.minefield.mines[i].alive = false
+		end
+		if powers.minefield.mines[i].alive then
+			local minePos = GetBodyTransform(powers.minefield.mines[i].body).pos
+			for j=1, #soldiers do
+				if getAliveStatusInRegistry(soldiers[j].id) and soldiers[j].team == ENEMY_TEAM and VecLength(VecSub(soldiers[j].t.pos, minePos)) <= 2 then
+					powers.minefield.mines[i].alive = false
+					Delete(powers.minefield.mines[i].body)
+					Explosion(minePos, 2)
+					break
+				end
+			end
+			newMines[#newMines + 1] = powers.minefield.mines[i]
+		end
+	end
+	powers.minefield.mines = newMines
+end
+
+function handleArtillery(dt)
+	local art = powers.artillery
+	art.cooldown.value = art.cooldown.value - dt
+	if art.count.value > 0 then
+		art.delay.value = art.delay.value - dt
+		if art.delay.value <= 0 then
+			art.delay.value = art.count.baseInterval + rand(1, 4) / 10
+			art.count.value = art.count.value - 1
+			Explosion(makeOffset(art.target, 5, true), 3)
+		end
+	end
+end
+
+function minefield(pos)
+	powers.minefield.cooldown.value = powers.minefield.cooldown.default
+	for i=1, 6 do
+		local entities = Spawn("vox/mine.xml", Transform(makeOffset(pos, 4, true)))
+		for j=1, #entities do
+			if GetEntityType(entities[j]) == "body" then
+				powers.minefield.mines[#powers.minefield.mines + 1] = {
+					body = entities[j],
+					alive = true
+				}
+			end
+		end
+	end
+end
+
+function artillery(pos)
+	local art = powers.artillery
+	art.delay.value = art.delay.default
+	art.target = deepcopy(pos)
+	art.count.value = art.count.default
+	art.cooldown.value = art.cooldown.default
+end
+
+function drawSuppliesOutline()
+	for i=1, #nexus.supplies.array do
+		local supply = nexus.supplies.array[i]
+		if supply.alive then
+			for j=1, #supply.bodies do
+				DrawBodyOutline(supply.bodies[j], 1, 1, 0, 1)
+			end
+		end
+	end
+end
+
+function handlePathfindingQueries()
+	if firstPassage then
+		firstPassage = false
+		local worldAA, worldBB = GetBodyBounds(GetWorldBody())
+		md = makeMappingData(worldAA, worldBB)
+		md.step = 3
+	end
+	processUpdate(md, dt)
+	
+	if md.status > 3 then
+		if #queryQueue > 0 then
+			queryQueue[1].status = getPathState(md)
+			local status = queryQueue[1].status
+			local askers = queryQueue[1].askers
+			if queryQueue[1].status == "idle" then
+				queryPath(md, queryQueue[1].start, queryQueue[1].target)
+				countQuery = countQuery + 1
+				queryQueue[1].status = getPathState(md)
+			elseif queryQueue[1].status == "fail" or queryQueue[1].status == "done" then
+				local newQueue = {}
+				if queryQueue[1].status == "done" then
+					local path = getSmoothPath(md)
+					for i=1, #queryQueue[1].askers do
+						setPathInRegistry(queryQueue[1].askers[i], path)
+					end
+					for i=1, #queryQueue[1].askers do
+						setUpdatedStatusInRegistry(queryQueue[1].askers[i], true)
+					end
+				end
+				abortPath(md)
+				
+				for i=2, #queryQueue do
+					newQueue[#newQueue + 1] = queryQueue[i]
+				end
+				queryQueue = newQueue
+			end
+			for i=1, #askers do
+				setPathStatusInRegistry(askers[i], status)
+			end
+		end
+		--edgesDebugLine(true, md)
 	end
 end
 
