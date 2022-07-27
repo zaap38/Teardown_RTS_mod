@@ -83,21 +83,17 @@ function tick(dt)
 	targetCost = vehicleDetection3()
 	targetCost.target = MAV(targetCost.target)
 	controlVehicle(targetCost)
-	drawTeamOutline(GetVehicleBody())
+	drawTeamOutline(GetVehicleBody(vehicle.id))
 end
 
 function drawTeamOutline(body)
-	--for i=1, #bodies do
-		local r = 1
-		local g = 0
-		--if GetTagValue(bodies[i], "team") == "1" then
-		if GetTagValue(body, "team") == "1" then
-			r = 0
-			g = 1
-		end
-		--DrawBodyOutline(bodies[i], r, g, 0, 1)
-		DrawBodyOutline(body, r, g, 0, 1)
-	--end
+	local r = 1
+	local g = 0
+	if GetTagValue(body, "team") == "1" then
+		r = 0
+		g = 1
+	end
+	DrawBodyOutline(body, r, g, 0, 1)
 end
 
 function setHealthInRegistry()
@@ -113,7 +109,7 @@ function getNavigationPosFromRegistry()
 end
 
 function setStatusInRegistry()
-	SetBool("level.rts.alive." .. identifier, GetVehicleHealth(vehicle.id) * 100 > 0)
+	SetBool("level.rts.alive." .. identifier, (GetVehicleHealth(vehicle.id) - 0.5) * 100 > 0)
 end
 
 onDestroyedCalled = false

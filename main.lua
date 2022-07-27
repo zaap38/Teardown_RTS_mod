@@ -74,7 +74,7 @@ function init()
 			value = 0,
 			max = 300,
 			lose = {
-				base = 5,
+				base = 2,
 				perUnit = 1
 			}
 		},
@@ -85,7 +85,7 @@ function init()
 				value = 0,
 				default = 5
 			},
-			fuel = 150
+			fuel = 175
 		},
 		waveIncrement = {}
 	}
@@ -122,10 +122,10 @@ function init()
 	health[DOC] = 100
 	health[TANK] = 50
 
-	godmode = true
+	godmode = false
 
 
-	md = nil--makeMappingData(Vec(-100, -100, -100), Vec(100, 100, 100))
+	md = nil
 	firstPassage = true
 	world = {}
 	world.aa, world.bb = GetBodyBounds(GetWorldBody())
@@ -171,7 +171,7 @@ function init()
 		minefield = {
 			cooldown = {
 				value = 0,
-				default = 30
+				default = 20
 			},
 			mines = {}
 		}
