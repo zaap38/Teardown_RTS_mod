@@ -55,7 +55,22 @@ function RTSDrawMenu()
             if v > 0 then
                 AutoSpreadRight()
                     UiPush()
-                        AutoImage(nil, AutoPad.heavy, AutoPad.heavy)
+                        local img = "MOD/img/"
+                        if i == 1 then
+                            img = img .. "infantry"
+                        elseif i == 2 then
+                            img = img .. "heavy"
+                        elseif i == 3 then
+                            img = img .. "sniper"
+                        elseif i == 4 then
+                            img = img .. "captain"
+                        elseif i == 5 then
+                            img = img .. "doc"
+                        elseif i == 6 then
+                            img = img .. "tank"
+                        end
+                        img = img .. "_preview.png"
+                        AutoImage(img, AutoPad.heavy, AutoPad.heavy)
                         UiAlign('center')
                         AutoText(toshow[i], 48)
                     UiPop()

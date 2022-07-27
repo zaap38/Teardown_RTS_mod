@@ -318,7 +318,6 @@ hover.distPadding = 0.3
 hover.timeSinceContact = 0.0
 
 function getNavigationPosFromRegistry()
-	--DebugPrint("get nav pos")
 	local pos = Vec()
 	for i=1, 3 do
 		pos[i] = GetFloat("level.rts.navigation_pos." .. identifier .. "." .. i)
@@ -341,6 +340,10 @@ function ignoreTargetBodies()
 	local bodies = getBodiesFromRegistry(target)
 	for i=1, #bodies do
 		QueryRejectBody(bodies[i])
+	end
+	local vehicle = GetBodyVehicle(bodies[1])
+	if IsHandleValid(vehicle) then
+		QueryRejectVehicle(vehicle)
 	end
 end
 
@@ -419,7 +422,7 @@ end
 
 function getTargetTransform()
 	local pos = getTargetPosFromRegistry()
-	if getTargetId() == 0 then
+	if getTargetId() == -1 then
 		pos = VecAdd(randVec(1), pos)
 	end
 	return Transform(pos)
@@ -822,11 +825,18 @@ function weaponFire(weapon, pos, dir)
 	
 	local targetId = getTargetId()
 
-	if head.seenTimer > 0.5 and (getAliveStatusInRegistry(targetId) or targetId == 0) then
+	if head.seenTimer > 0.5 and (targetId == -1 or getAliveStatusInRegistry(targetId)) then
 		if weapon.type == "gun" then
 			PlaySound(shootSound, pos, 1.0, false)
 			PointLight(pos, 1, 0.8, 0.6, 1.5)
 			Shoot(pos, dir, 0, weapon.strength)
+		elseif weapon.type == "shotgun" then
+			PlaySound(shootSound, pos, 1.0, false)
+			PointLight(pos, 1, 0.8, 0.6, 1.5)
+			for i=1, 6 do
+				local spreadDir = VecNormalize(VecAdd(dir, randVec(0.05)))
+				Shoot(pos, spreadDir, 0, weapon.strength)
+			end
 		elseif weapon.type == "rocket" then
 			--pos = VecAdd(pos, VecScale(dir, 0.9))
 			PlaySound(rocketSound, pos, 1.0, false)
@@ -2107,6 +2117,9 @@ function tick(dt)
 		elseif soldierType == 3 then
 			config.viewDistance = 50
 			config.maxHealth = 75
+		elseif soldierType == 4 then
+			config.viewDistance = 35
+			config.maxHealth = 200
 		elseif soldierType == 6 then
 
 		end

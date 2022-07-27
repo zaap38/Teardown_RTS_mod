@@ -1,0 +1,80 @@
+<prefab version="0.5.3">
+	<group id_="1956500096" name="instance=MOD/prefabs/t72/t72.xml" pos="-0.1 0.2 -23.3" rot="0.0 0.0 0.0">
+		<vehicle id_="552633280" open_="true" name="t72" tags="cfg=vehicle t72" pos="0.1 -0.2 1.1" rot="0.0 0.0 0.0" driven="false" sound="dumptruck" spring="1" damping="0.8" topspeed="50" acceleration="2" strength="50" antispin="1" antiroll="0.2" difflock="1" steerassist="2" friction="2">
+			<body id_="223098160" open_="true" tags="component=body" pos="-0.05 0.6 -0.25" rot="0.0 0.0 0.0" dynamic="true">
+				<vox id_="418735072" tags="component=chassis" pos="0.05 -0.2 0.25" rot="0 180 0" texture="8 .4" density="20" strength="10" file="MOD/prefabs/t72/t72.vox" object="body">
+					<light id_="628331968" pos="0.8 1.35 3.4" rot="0.0 0.0 0.0" type="cone" color="1 .9 .8" scale="30" angle="90" penumbra="30" size="0.2" unshadowed="0.2" glare="0.35"/>
+					<light id_="1283142144" pos="-0.8 1.35 3.4" rot="0.0 0.0 0.0" type="cone" color="1 .9 .8" scale="30" angle="90" penumbra="30" size="0.2" unshadowed="0.2" glare="0.35"/>
+					<location id_="554599488" tags="exhaust" pos="2.2 	1.6 	-1.7" rot="0 60 0 "/>
+					<location id_="2026300160" tags="exhaust" pos="2.1 	1.6 	-1.8" rot="-20 60 0 "/>
+					<location id_="435840992" tags="exhaust" pos="2.1  	1.6 	-1.5" rot="20 80 0 "/>
+					<location id_="54463740" tags="exhaust" pos="2.2  	1.6 	-1.9" rot="-10 130 0 "/>
+					<location id_="1324301184" tags="exhaust" pos="2.2  	1.6 	-2" rot="10 160 0 "/>
+					<location id_="1255615360" tags="vital" pos="0.05 0.55 1.4" rot="-180.0 360.0 -180.0"/>
+					<location id_="435382208" tags="player" pos="-0.05 1.47 1.8" rot="0.0 0.0 0.0"/>
+					<vox id_="84939840" pos="2.2 .9 0.7" rot="0 0 0" file="MOD/prefabs/t72/t72.vox" object="skirteraL"/>
+					<vox id_="394944032" pos="-2.2 .9 0.7" rot="0 0 0" file="MOD/prefabs/t72/t72.vox" object="skirteraR"/>
+				</vox>
+				<vox id_="220148864" open_="true" tags="component=turret turretGroup=mainTurret" pos="0 1.4 .5" rot="0.0 180 0" texture="7 0.4" density="1.2" strength="10" prop="true" file="MOD/prefabs/t72/t72.vox" object="altTurret">
+					<light id_="1812705280" pos="-0.6 .35 1.7" rot="0.0 0.0 0.0" type="cone" color="1 .9 .8" scale="60" angle="90" penumbra="30" size="0.2" unshadowed="1" glare="0.35"/>
+					<joint id_="2084303104" name="turretjoint" tags="component=turretJoint" pos="0.0 0.0 0.0" rot="90 0 0" type="hinge" size="0.5" rotstrength="14" rotspring="0" sound="true"/>
+					<vox id_="1090978816" open_="true" tags="component=gun weaponType=D81 group=primary   interact=mountedGun" pos="-0.1 0.2 3.7" rot="0.0 0 0" texture="7 .5" density="1.2" strength="50" prop="true" file="MOD/prefabs/t72/t72.vox" object="altGun">
+						<joint id_="1577023488" name="gunjoint" tags="component=gunJoint" pos="-0.1 0.2 -2.5" rot="0 90 0" type="hinge" size="0.1" rotstrength=".5" rotspring="0" limits="-14 5" sound="true"/>
+					</vox>
+				</vox>
+				<vox id_="582191808" tags="t72Trigger hook" pos="0 1 3" file="MOD/prefabs/t72/t72.vox" object="trigger">
+					<joint id_="682402496" tags="t72triggerJoint" pos="0.0   0 0 " rot="0 90 0" type="ball" size=".1" rotstrength=".5" rotspring="0" sound="true"/>
+				</vox>
+				<wheel id_="1705416320" name="runner03" pos="1.1 0.6 -2.9" drive="1" steer="0.1" travel="-0.1 0">
+					<vox id_="545030656" pos="0.45 -0.25 -0.05" rot="0.0 0 0.0" file="MOD/prefabs/t72/t72.vox" object="runner03"/>
+				</wheel>
+				<wheel id_="1063517568" name="whr1" pos="1.1 0.2 -2.3" rot="0.0 0 0.0" drive="1" steer="0.66" travel="-0.1 0">
+					<vox id_="1180506496" pos="0.5 -0.5 -0.05" file="MOD/prefabs/t72/t72.vox" object="whr1"/>
+				</wheel>
+				<wheel id_="1352352384" name="whr2" pos="1.1 0.27 -1.35" rot="0.0 0 0.0" drive="1" steer="0.44" travel="-0.1 0.1">
+					<vox id_="903075648" pos="0.5 -0.55 -0.05" rot="0.0 0.0 0.0" file="MOD/prefabs/t72/t72.vox" object="whr2"/>
+				</wheel>
+				<wheel id_="369055744" name="whr3" pos="1.1 0.27 -.3" drive="1" steer="0.33" travel="-0.1 0.1">
+					<vox id_="853986176" pos="0.5 -0.55 -0.05" rot="0.0 0.0 0.0" file="MOD/prefabs/t72/t72.vox" object="whr3"/>
+				</wheel>
+				<wheel id_="488338528" name="whr4" pos="1.1 0.27 .65" drive="1" steer="-0.33" travel="-0.1 0.1">
+					<vox id_="1882112128" pos="0.5 -0.55 -0.05" rot="0.0 0.0 0.0" file="MOD/prefabs/t72/t72.vox" object="whr4"/>
+				</wheel>
+				<wheel id_="76878416" name="whr5" pos="1.1 0.27 1.7" drive="1" steer="-0.33" travel="-0.1 0.1">
+					<vox id_="376855008" pos="0.5 -0.55 -0.05" rot="0.0 0.0 0.0" file="MOD/prefabs/t72/t72.vox" object="whr5"/>
+				</wheel>
+				<wheel id_="1270427392" name="whr6" pos="1.1 0.25 2.7" drive="1" steer="-0.66" travel="-0.1 0.1">
+					<vox id_="581929664" pos="0.5 -0.5 -0.05" rot="0.0 0.0 0.0" file="MOD/prefabs/t72/t72.vox" object="whr6"/>
+				</wheel>
+				<wheel id_="1397443840" name="runner04" pos="1.1 0.6 3.3" drive="1" steer="-0.1" travel="-0.1 0.1">
+					<vox id_="334057376" pos="0.45 -0.25 -0.05" rot="0.0 0 0.0" file="MOD/prefabs/t72/t72.vox" object="runner04"/>
+				</wheel>
+				<wheel id_="1105987456" name="runner01" pos="-2.1 0.6 -2.9" drive="1" steer="0.1" travel="-0.1 0">
+					<vox id_="1924647680" pos="0.5 -0.3 -0.05" rot="0.0 0.0 0.0" file="MOD/prefabs/t72/t72.vox" object="runner01"/>
+				</wheel>
+				<wheel id_="1351893632" name="whl1" pos="-2.1 0.2 -2.3" drive="1" steer="0.66" travel="-0.1 0">
+					<vox id_="1144000640" pos="0.5 -0.5 -0.05" rot="0.0 0.0 0.0" file="MOD/prefabs/t72/t72.vox" object="whl1"/>
+				</wheel>
+				<wheel id_="1743888384" name="whl2" pos="-2.1 0.27 -1.35" drive="1" steer="0.44" travel="-0.1 0.1">
+					<vox id_="1314994560" pos="0.5 -0.55 -0.05" rot="0.0 0.0 0.0" file="MOD/prefabs/t72/t72.vox" object="whl2"/>
+				</wheel>
+				<wheel id_="2108290688" name="whl3" pos="-2.1 0.27 -.3" drive="1" steer="0.33" travel="-0.1 0.1">
+					<vox id_="15991760" pos="0.5 -0.55 -0.05" rot="0.0 0.0 0.0" file="MOD/prefabs/t72/t72.vox" object="whl3"/>
+				</wheel>
+				<wheel id_="1490510720" name="whl4" pos="-2.1 0.27 .65" drive="1" steer="-0.33" travel="-0.1 0.1">
+					<vox id_="743420224" pos="0.5 -0.55 -0.05" rot="0.0 0.0 0.0" file="MOD/prefabs/t72/t72.vox" object="whl4"/>
+				</wheel>
+				<wheel id_="1597472000" name="whl5" pos="-2.1 0.27 1.7" drive="1" steer="-0.33" travel="-0.1 0.1">
+					<vox id_="1115687424" pos="0.5 -0.55 -0.05" rot="0.0 0.0 0.0" file="MOD/prefabs/t72/t72.vox" object="whl5"/>
+				</wheel>
+				<wheel id_="1490576256" name="whl6" pos="-2.1 0.25 2.7" drive="1" steer="-0.66" travel="-0.1 0.1">
+					<vox id_="2024465024" pos="0.5 -0.5 -0.05" rot="0.0 0.0 0.0" file="MOD/prefabs/t72/t72.vox" object="whl6"/>
+				</wheel>
+				<wheel id_="1179982208" name="runner02" pos="-2.1 0.6 3.3" drive="1" steer="0.1" travel="-0.1 0">
+					<vox id_="349852512" pos="0.5 -0.3 -0.05" rot="0.0 0.0 0.0" file="MOD/prefabs/t72/t72.vox" object="runner02"/>
+				</wheel>
+			</body>
+		</vehicle>
+	</group>
+</prefab>
+

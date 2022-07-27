@@ -7,3 +7,5 @@ script/infantry/spawn/combine.xml : Infantry/Infantry
 script/infantry/spawn/doc.xml : Infantry/Doc
 script/infantry/spawn/sniper.xml : Infantry/Sniper
 script/infantry/spawn/heavy.xml : Infantry/Heavy Infantry
+script/infantry/spawn/captain.xml : Infantry/Captain
+prefabs/aitank.xml : Vehicle/Tank

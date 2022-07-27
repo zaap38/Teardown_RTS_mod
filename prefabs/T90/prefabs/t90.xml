@@ -1,0 +1,83 @@
+<prefab version="0.5.3">
+	<group id_="758297792" open_="true" name="instance=LEVEL/prefabs/t90.xml" pos="0.2 0.0 -1.3" rot="0.0 90.0 0.0">
+		<vehicle id_="559580544" open_="true" name="t90" tags="cfg=vehicle name=t90" pos="-0.7 0.0 0.0" rot="0.0 -90.0 0.0" driven="false" sound="dumptruck" spring="1" damping="0.8" topspeed="50" acceleration=".25" strength="50" antispin="1" antiroll="0.2" difflock="1" steerassist="2" friction="2">
+			<body id_="921164672" open_="true" tags="component=body" pos="-0.05 0.6 -0.25" rot="0.0 0.0 0.0" dynamic="true">
+				<vox id_="409493920" tags="component=chassis" pos="0.05 -0.2 0.25" rot="0 180 0" texture="8 .4" density="20" strength="10" file="LEVEL/t90A.vox" object="t90body">
+					<light id_="2078076800" pos="0.8 1.35 3.4" rot="0.0 0.0 0.0" type="cone" color="1 .9 .8" scale="30" angle="90" penumbra="30" size="0.2" unshadowed="0.2" glare="0.35"/>
+					<light id_="777107776" pos="-0.8 1.35 3.4" rot="0.0 0.0 0.0" type="cone" color="1 .9 .8" scale="30" angle="90" penumbra="30" size="0.2" unshadowed="0.2" glare="0.35"/>
+					<light id_="1651542400" pos="1.35 1.45 -4.0" rot="0.0 -180.0 0.0" type="area" color="1 .1 .1" size="0.3 0.1" unshadowed="0.2" glare="0.1"/>
+					<light id_="2110125824" pos="-1.35 1.45 -4.0" rot="0.0 -180.0 0.0" type="area" color="1 .1 .1" size="0.3 0.1" unshadowed="0.2" glare="0.1"/>
+					<location id_="1982650496" tags="exhaust" pos="2.2 	1.6 	-2.4" rot="0 60 0 "/>
+					<location id_="426730944" tags="exhaust" pos="2.1 	1.6 	-2.3" rot="-20 60 0 "/>
+					<location id_="119807120" tags="exhaust" pos="2.1  	1.6 	-2.3" rot="20 80 0 "/>
+					<location id_="11797200" tags="exhaust" pos="2.2  	1.6 	-2.3" rot="-10 130 0 "/>
+					<location id_="812237248" tags="exhaust" pos="2.2  	1.6 	-2.2" rot="10 160 0 "/>
+					<location id_="1590524672" tags="vital" pos="0.05 0.55 1.4" rot="-180.0 360.0 -180.0"/>
+					<location id_="588155968" tags="player" pos="-0.05 1.47 1.8" rot="0.0 0.0 0.0"/>
+				</vox>
+				<vox id_="271859904" open_="true" tags="component=turret turretGroup=mainTurret smokeLauncher=t90_smoke_turret group=smoke t90Turret_1  commander" pos="0.0 1.4 0.2" rot="0.0 180 0" texture="7 0.4" density="1.2" strength="10" prop="true" file="LEVEL/t90A.vox" object="t90turret">
+					<joint id_="1651739136" tags="component=turretJoint t90TurretMount_1" pos="0.0  0 0" rot="90 0 0" type="hinge" size="0.5" rotstrength="14" rotspring="0" sound="true"/>
+					<vox id_="140190064" open_="true" tags="component=gun weaponType=2A46M group=primary t90Gun_1 
+							interact=mountedGun" pos="-0.1 0.1 4.85" rot="0.0 0 0" texture="7 .5" density="1.2" strength="50" prop="true" file="LEVEL/t90A.vox" object="t90Gun">
+						<joint id_="1134956160" name="gunJoint" tags="component=gunJoint" pos="0.3 0.24 -3.1" rot="0 90 0" type="hinge" size=".1" rotstrength="1" rotspring="0" limits="-14 5" sound="true"/>
+					</vox>
+					<vox id_="1105856384" open_="true" tags="component=gun weaponType=PKT group=secondary  interact=mountedGun" pos="-0.5 0.2 1.9" rot="0.0 0 0" texture="7 .5" density="1.2" prop="true" file="LEVEL/t90A.vox" object="coax">
+						<joint id_="1361265792" name="gunJoint" tags="component=gunJoint" pos="-0.05 0.14 -0.2" rot="0 90 0" type="hinge" size=".15" rotstrength="14" rotspring=".0" limits="-20 4" sound="true"/>
+					</vox>
+				</vox>
+				<vox id_="1981601920" tags="component=trigger t90Trigger_1 hook" pos="0 1 3" file="LEVEL/t90A.vox" object="trigger">
+					<joint id_="2100884736" tags="t90triggerJoint_1" pos="0.0   0 0 " rot="0 90 0" type="ball" size=".1" rotstrength=".5" rotspring="0" sound="true"/>
+				</vox>
+				<wheel id_="2080239616" name="whrSprocketF" pos=".8 0.55 -2.95" drive="1" steer="0.33" travel="-0.1 0">
+					<vox id_="550601536" pos="0.7 -0.3 0.025" rot="0.0 0.0 0.0" file="LEVEL/t90A.vox" object="whrSprocketF"/>
+				</wheel>
+				<wheel id_="1989335680" name="whr1" pos=".7 0.2 -2.3" drive="1" steer="0.66" travel="-0.1 0">
+					<vox id_="1904920064" pos="0.7 -0.375 0.025" rot="0.0 0.0 0.0" file="LEVEL/t90A.vox" object="whr1"/>
+				</wheel>
+				<wheel id_="1898628224" name="whr2" pos=".7 0.2 -1.3" drive="1" steer="0.44" travel="-0.1 0">
+					<vox id_="824034432" pos="0.7 -0.375 0.025" rot="0.0 0.0 0.0" file="LEVEL/t90A.vox" object="whr2"/>
+				</wheel>
+				<wheel id_="1131810304" name="whr3" pos=".7 0.2 -0.3" drive="1" steer="0.33" travel="-0.1 0">
+					<vox id_="700557056" pos="0.7 -0.375 0.025" rot="0.0 0.0 0.0" file="LEVEL/t90A.vox" object="whr3"/>
+				</wheel>
+				<wheel id_="588483648" name="whr4" pos=".7 0.2 0.7" drive="1" steer="-0.33" travel="-0.1 0">
+					<vox id_="1709938560" pos="0.7 -0.375 0.025" rot="0.0 0.0 0.0" file="LEVEL/t90A.vox" object="whr4"/>
+				</wheel>
+				<wheel id_="917297856" name="whr5" pos=".7 0.2 1.7" drive="1" steer="-0.33" travel="-0.1 0">
+					<vox id_="1199840768" pos="0.7 -0.375 0.025" rot="0.0 0.0 0.0" file="LEVEL/t90A.vox" object="whr5"/>
+				</wheel>
+				<wheel id_="1591507840" name="whr6" pos=".7 0.2 2.7" drive="1" steer="-0.33" travel="-0.1 0">
+					<vox id_="27788960" pos="0.7 -0.375 0.025" rot="0.0 0.0 0.0" file="LEVEL/t90A.vox" object="whr6"/>
+				</wheel>
+				<wheel id_="1266101760" name="whrSprocketR" pos=".8 0.65 3.55" drive="1" steer="0.33" travel="-0.1 0">
+					<vox id_="1365001600" pos="0.7 -0.3 0.025" rot="0.0 0.0 0.0" file="LEVEL/t90A.vox" object="whrSprocketR"/>
+				</wheel>
+				<wheel id_="1743888384" name="whlSprocketF" pos="-.8 0.55 -2.95" drive="1" steer="0.33" travel="-0.1 0">
+					<vox id_="1960235904" pos="-0.7 -0.3 0.025" rot="0.0 0.0 0.0" file="LEVEL/t90A.vox" object="whlSprocketF"/>
+				</wheel>
+				<wheel id_="1072299968" name="whl1" pos="-0.7 0.2 -2.3" drive="1" steer="0.66" travel="-0.1 0">
+					<vox id_="509311328" pos="-.7 -0.375 0.025" rot="0.0 180.0 0.0" file="LEVEL/t90A.vox" object="whl1"/>
+				</wheel>
+				<wheel id_="1160385664" name="whl2" pos="-0.7 0.2 -1.3" drive="1" steer="0.44" travel="-0.1 0">
+					<vox id_="1187191552" pos="-0.7 -0.375 0.025" rot="0.0 180.0 0.0" file="LEVEL/t90A.vox" object="whl2"/>
+				</wheel>
+				<wheel id_="1788848768" name="whl3" pos="-0.7 0.2 -0.3" drive="1" steer="0.33" travel="-0.1 0">
+					<vox id_="621122560" pos="-0.7 -0.375 0.025" rot="0.0 180.0 0.0" file="LEVEL/t90A.vox" object="whl3"/>
+				</wheel>
+				<wheel id_="1678938240" name="whl4" pos="-0.7 0.2 0.7" drive="1" steer="-0.33" travel="-0.1 0">
+					<vox id_="2073751168" pos="-0.7 -0.375 0.025" rot="0.0 180.0 0.0" file="LEVEL/t90A.vox" object="whl4"/>
+				</wheel>
+				<wheel id_="413819552" name="whl5" pos="-0.7 0.2 1.7" drive="1" steer="-0.33" travel="-0.1 0">
+					<vox id_="829146560" pos="-0.7 -0.375 0.025" rot="0.0 180.0 0.0" file="LEVEL/t90A.vox" object="whl5"/>
+				</wheel>
+				<wheel id_="109189640" name="whl6" pos="-0.7 0.2 2.7" drive="1" steer="-0.33" travel="-0.1 0">
+					<vox id_="463433344" pos="-0.7 -0.375 0.025" rot="0.0 180.0 0.0" file="LEVEL/t90A.vox" object="whl6"/>
+				</wheel>
+				<wheel id_="131014464" name="whlSprocketR" pos="-.8 0.65 3.55" drive="1" steer="0.33" travel="-0.1 0">
+					<vox id_="1184176768" pos="-0.7 -0.3 0.025" rot="0.0 0.0 0.0" file="LEVEL/t90A.vox" object="whlSprocketR"/>
+				</wheel>
+			</body>
+		</vehicle>
+	</group>
+</prefab>
+
